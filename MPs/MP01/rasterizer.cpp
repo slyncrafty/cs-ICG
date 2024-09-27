@@ -9,216 +9,219 @@
 using namespace std;
 
 
+// std::vector<Vertex> DDA(const Vertex &start, const Vertex &end, bool dirY)
+// {
+//     /*
+//     Finds all points vector p between vector a and vector b where p_d is an integer
 
-void DDA(const Vec4 &start, const Vec4 &end, const Vec4 &startColor, const Vec4 &endColor) {
-    Vec4 delta = end - start;  // Difference between end and start points
-    float steps = std::max(std::abs(delta.x), std::abs(delta.y));  // Maximum number of steps in x or y
-
-    Vec4 step = delta / steps;  // Incremental change in position per step
-    Vec4 colorStep = (endColor - startColor) / steps;  // Incremental change in color per step
-
-    Vec4 currentPoint = start;
-    Vec4 currentColor = startColor;
-
-    std::cout << delta.x << " " << delta.y << " " << delta.z << " " << delta.w << "." << std::endl; // debugging
+//     Inputs:
+//     - Vertex start
+//     - Vertex end
+//     Output:
+//     - all points between start and end
+//     */
     
-    for (int i = 0; i <= steps; ++i) {
-        int x = static_cast<int>(std::round(currentPoint.x));
-        int y = static_cast<int>(std::round(currentPoint.y));
+//     Vec4 a = start.position;
+//     Vec4 b = end.position;
+//     // setup
+//     if(dirY && a.y == b.y)          return{};
+//     if(!dirY && a.x == b.x)         return{};
+//     if(dirY && a.y > b.y)           std::swap(a,b);
+//     else if(!dirY && a.x > b.x)     std::swap(a,b);
 
-        setPixel(x, y, currentColor);
+//     Vec4 deltaPos = b - a;
+//     Vec4 deltaCol = end.color - start.color;
+//     Vec2 deltaTex = end.texcoord - start.texcoord;
 
-        currentPoint = currentPoint + step;
-        currentColor = currentColor + colorStep;
-    }
-}
+//     float step = dirY ? deltaPos.y : deltaPos.x;
+//     if(step == 0.0f)    return{}; //(divide by zero)
+//     Vec4 stepPos = deltaPos / step;
+//     Vec4 stepCol = deltaCol / step;
+//     Vec2 stepTex = deltaTex / step;
 
+//     float startPt = dirY ? std::ceil(a.y) : std::ceil(a.x);
+//     float offset = startPt - (dirY ? a.y : a.x);
 
+//     // Interpolation
+//     Vertex currVertex = start;
+//     currVertex.position = currVertex.position + stepPos * offset;
+//     currVertex.color = currVertex.color + stepCol * offset;
+//     currVertex.texcoord = currVertex.texcoord + stepTex * offset;
 
-void scanlineFill(const Vec4 &top, const Vec4 &middle, const Vec4 &bottom, const Vec4 &colorTop, const Vec4 &colorMiddle, const Vec4 &colorBottom) {
-    // Sort vertices by y-coordinate
-    std::vector<std::pair<Vec4, Vec4>> vertices = {{top, colorTop}, {middle, colorMiddle}, {bottom, colorBottom}};
-    std::sort(vertices.begin(), vertices.end(), [](const auto &a, const auto &b) {
-        return a.first.y < b.first.y;
-    });
-
-    const Vec4 &v0 = vertices[0].first;
-    const Vec4 &v1 = vertices[1].first;
-    const Vec4 &v2 = vertices[2].first;
-
-    const Vec4 &c0 = vertices[0].second;
-    const Vec4 &c1 = vertices[1].second;
-    const Vec4 &c2 = vertices[2].second;
-
-    if (v1.y == v0.y || v2.y == v0.y) 
-    {
-        std::cerr << "Error: Division by zero detected in scanlineFill" << std::endl;
-        return;
-    }
-    // Compute (v0 to v1 & v0 to v2)
-    for (int y = static_cast<int>(std::ceil(v0.y)); y <= static_cast<int>(std::ceil(v2.y)); ++y) {
-        // Top half of the triangle (v0 to v1 and v0 to v2)
-        float t0 = (y - v0.y) / (v1.y - v0.y);  // Interpolation factor for edge v0-v1
-        float t1 = (y - v0.y) / (v2.y - v0.y);  // Interpolation factor for edge v0-v2
-
-        Vec4 p0 = v0 + (v1 - v0) * t0;
-        Vec4 p1 = v0 + (v2 - v0) * t1;
-
-        Vec4 colorP0 = c0 + (c1 - c0) * t0;
-        Vec4 colorP1 = c0 + (c2 - c0) * t1;
-
-        // Use DDA to fill the scanline between p0 and p1
-        DDA(p0, p1, colorP0, colorP1);
-          
-    }
-    // Compute (v1 to v2 & v0 to v2)
-    for (int y = static_cast<int>(std::ceil(v1.y)); y <= static_cast<int>(std::ceil(v2.y)); ++y)
-    {
-        // Bottom half of the triangle (v1 to v2 and v0 to v2)
-        float t0 = (y - v1.y) / (v2.y - v1.y);  // Interpolation factor for edge v1-v2
-        float t1 = (y - v0.y) / (v2.y - v0.y);  // Interpolation factor for edge v0-v2
-        // Interpolated positions
-        Vec4 p0 = v1 + (v2 - v1) * t0;
-        Vec4 p1 = v0 + (v2 - v0) * t1;
-        // Interpolated colors
-        Vec4 colorP0 = c1 + (c2 - c1) * t0;
-        Vec4 colorP1 = c0 + (c2 - c0) * t1;
-
-        // Use DDA to fill the scanline between p0 and p1
-        DDA(p0, p1, colorP0, colorP1);
-    }
-}
-
-
-
-// void drawArraysTriangles(int first, int count) {
-
-//     for (int i = 0; i < count; i += 3) {
-//         Vec4 v0 = positions[first + i];
-//         Vec4 v1 = positions[first + i + 1];
-//         Vec4 v2 = positions[first + i + 2];
-
-//         Vec4 c0 = colors[first + i];
-//         Vec4 c1 = colors[first + i + 1];
-//         Vec4 c2 = colors[first + i + 2];
-
-//         std::cout << "Drawing Arrays" << i << "/" << count << std::endl;
-//         // Fill the triangle using the scanline function
-//         scanlineFill(v0, v1, v2, c0, c1, c2);
+//     std::vector<Vertex> intpVertices;  
+//     for (int i = 0; i <= step; ++i) {
+//         intpVertices.push_back(currVertex);  
+//         currVertex.position = currVertex.position + stepPos;  
+//         currVertex.color = currVertex.color + stepCol;
+//         currVertex.texcoord = currVertex.texcoord + stepTex;
 //     }
+//     return intpVertices;
 // }
 
+std::vector<Vertex> DDA(const Vertex &start, const Vertex &end, bool dirY) {
+    /*
+    Finds all points vector p between vector a and vector b where p_d is an integer
 
-void drawArraysTriangles(int first, int count) {
-    for (int i = 0; i < count; i += 3) {
-        // Get the vertices for the triangle
-        Vec4 v0 = positions[first + i];
-        Vec4 v1 = positions[first + i + 1];
-        Vec4 v2 = positions[first + i + 2];
+    Inputs:
+    - Vertex start
+    - Vertex end
+    Output:
+    - all points between start and end
+    */
+    Vertex vStart = start;
+    Vertex vEnd = end;    
 
-        // Get the corresponding colors for the vertices
-        Vec4 c0 = colors[first + i];
-        Vec4 c1 = colors[first + i + 1];
-        Vec4 c2 = colors[first + i + 2];
+    // 1 : no points return
+    if (dirY && start.position.y == end.position.y) return {};  
+    if (!dirY && start.position.x == end.position.x) return {};  
 
-        // Sort the vertices by their y-coordinate to ensure top-to-bottom order
-        if (v1.y < v0.y) {
-            std::swap(v0, v1);
-            std::swap(c0, c1);
+    // 2: Ensure the correct order
+    if (dirY && vStart.position.y > vEnd.position.y) { std::swap(vStart, vEnd); } 
+    if (!dirY && vStart.position.x > vEnd.position.x) { std::swap(vStart, vEnd); }
+
+    // 3: Calculate deltas
+    Vec4 deltaPos = vEnd.position - vStart.position;                   
+    Vec4 deltaCol = vEnd.color - vStart.color;              
+    Vec2 deltaTex = vEnd.texcoord - vStart.texcoord; 
+
+    // 4: step
+    float step = dirY ? deltaPos.y : deltaPos.x;  // Step along y if dirY is true, otherwise along x
+    if (step == 0.0f) return {};  // No valid steps, return early
+
+    Vec4 stepPos = deltaPos / step;     // Position increment per step
+    Vec4 stepCol = deltaCol / step;     // Color increment per step
+    Vec2 stepTex = deltaTex / step;     // Texcoord increment per step
+
+    // 5: Find the first potential point:
+    float startCoord = dirY ? vStart.position.y : vStart.position.x;
+    float offset = std::ceil(startCoord) - startCoord;
+    Vertex currVertex = vStart;
+    currVertex.position = currVertex.position + stepPos * offset;
+    currVertex.color = currVertex.color + stepCol * offset;
+    currVertex.texcoord = currVertex.texcoord + stepTex * offset;
+
+    // 6: Find all points
+    std::vector<Vertex> intpVertices; 
+    for (int i = 0; i <= step; ++i) 
+    {
+        intpVertices.push_back(currVertex);
+        currVertex.position = currVertex.position + stepPos;
+        currVertex.color = currVertex.color + stepCol;
+        currVertex.texcoord = currVertex.texcoord + stepTex;
+    }
+
+    return intpVertices;  // Return all the interpolated vertices
+}
+
+
+void scanlineFill(const Vertex &p1, const Vertex &p2, const Vertex &p3) {
+    // Sort vertices by y-coordinate smallest-top; biggest-bot
+    std::vector<Vertex> verts = {p1, p2, p3};
+    std::sort(verts.begin(), verts.end(), [](const auto &a, const auto &b) 
+    {
+        return a.position.y < b.position.y;
+    });
+    
+    // Divide triangle to top & bot halves
+    const Vertex &top = verts[0];
+    const Vertex &mid = verts[1];
+    const Vertex &bot = verts[2];
+    // std::cout << "top: " << top.position.y <<" mid: " << mid.position.y << " bot: " << bot.position.y << std::endl; // Debugging
+   
+    // DDA along edges in y
+    std::vector<Vertex> topMidEdge = DDA(top, mid, true);
+    std::vector<Vertex> midBotEdge = DDA(mid, bot, true);
+    std::vector<Vertex> topBotEdge = DDA(top, bot, true);
+    // std::cout << "DDA Result size: " << topBotEdge.size() << " " << topMidEdge.size() << " " << midBotEdge.size() << " " << std::endl;
+        
+    if (topMidEdge.empty() || midBotEdge.empty() || topBotEdge.empty()) { return; }
+
+    // top half of the triangle
+    for (int y = 0; y < topMidEdge.size(); ++y) {
+        Vertex left = topMidEdge[y];  
+        Vertex right = topBotEdge[y]; 
+        std::vector<Vertex> scanline = DDA(left, right, false);
+        for (const Vertex &v : scanline) {
+            setPixel(static_cast<int>(v.position.x), static_cast<int>(y + top.position.y), v.color);
         }
-        if (v2.y < v0.y) {
-            std::swap(v0, v2);
-            std::swap(c0, c2);
-        }
-        if (v2.y < v1.y) {
-            std::swap(v1, v2);
-            std::swap(c1, c2);
-        }
+    }
 
-        // Now v0 is the top, v1 is the middle, and v2 is the bottom vertex.
-
-        // Draw the top half of the triangle (v0 -> v1 and v0 -> v2)
-        if (v1.y != v0.y) {
-            for (int y = static_cast<int>(std::ceil(v0.y)); y <= static_cast<int>(std::ceil(v1.y)); ++y) {
-                float t0 = (y - v0.y) / (v1.y - v0.y);  // Interpolation factor for v0 -> v1
-                float t1 = (y - v0.y) / (v2.y - v0.y);  // Interpolation factor for v0 -> v2
-
-                Vec4 p0 = v0 + (v1 - v0) * t0;  // Interpolated position between v0 and v1
-                Vec4 p1 = v0 + (v2 - v0) * t1;  // Interpolated position between v0 and v2
-
-                Vec4 colorP0 = c0 + (c1 - c0) * t0;  // Interpolated color between v0 and c1
-                Vec4 colorP1 = c0 + (c2 - c0) * t1;  // Interpolated color between v0 and c2
-
-                // Use DDA to fill the scanline between p0 and p1
-                DDA(p0, p1, colorP0, colorP1);
-            }
-        }
-
-        // Draw the bottom half of the triangle (v1 -> v2 and v0 -> v2)
-        if (v2.y != v1.y) {
-            for (int y = static_cast<int>(std::ceil(v1.y)); y <= static_cast<int>(std::ceil(v2.y)); ++y) {
-                float t0 = (y - v1.y) / (v2.y - v1.y);  // Interpolation factor for v1 -> v2
-                float t1 = (y - v0.y) / (v2.y - v0.y);  // Interpolation factor for v0 -> v2
-
-                Vec4 p0 = v1 + (v2 - v1) * t0;  // Interpolated position between v1 and v2
-                Vec4 p1 = v0 + (v2 - v0) * t1;  // Interpolated position between v0 and v2
-
-                Vec4 colorP0 = c1 + (c2 - c1) * t0;  // Interpolated color between v1 and v2
-                Vec4 colorP1 = c0 + (c2 - c0) * t1;  // Interpolated color between v0 and c2
-
-                // Use DDA to fill the scanline between p0 and p1
-                DDA(p0, p1, colorP0, colorP1);
-            }
+    // bottom half of the triangle
+    for (int y = 0; y < midBotEdge.size(); ++y) {
+        Vertex left = midBotEdge[y];  
+        Vertex right = topBotEdge[topMidEdge.size() + y]; 
+        std::vector<Vertex> scanline = DDA(left, right, false);
+        for (const Vertex &v : scanline) {
+            setPixel(static_cast<int>(v.position.x), static_cast<int>(y + mid.position.y), v.color);
         }
     }
 }
 
 
-void drawElementsTriangles(int count, int offset) {
-    for (int i = 0; i < count; i += 3) {
-        // Retrieve vertex indices from the element array buffer
-        unsigned int idx0 = elements[offset + i];
-        unsigned int idx1 = elements[offset + i + 1];
-        unsigned int idx2 = elements[offset + i + 2];
+// void scanlineFill(const Vertex &p1, const Vertex &p2, const Vertex &p3) {
+//     // Sort vertices by y-coordinate smallest-top; biggest-bot
+//     std::vector<Vertex> verts = {p1, p2, p3};
+//     std::sort(verts.begin(), verts.end(), [](const auto &a, const auto &b) 
+//     {
+//         return a.position.y < b.position.y;
+//     });
+    
+//     // Divide triangle to top & bot halves
+//     const Vertex &top = verts[0];
+//     const Vertex &mid = verts[1];
+//     const Vertex &bot = verts[2];
+//     // std::cout << "top: " << top.position.y <<" mid: " << mid.position.y << " bot: " << bot.position.y << std::endl; // Debugging
+   
+//     // DDA along edges in y
+//     std::vector<Vertex> topBotEdge = DDA(top, bot, true);
+//     std::vector<Vertex> topMidEdge = DDA(top, mid, true);
+//     std::vector<Vertex> midBotEdge = DDA(mid, bot, true);
+//     // std::cout << "DDA Result size: " << topBotEdge.size() << " " << topMidEdge.size() << " " << midBotEdge.size() << " " << std::endl;
+    
+//     // top half of the triangle
+//     for (int y = 0; y < topMidEdge.size(); ++y) {
+//         Vertex left = topMidEdge[y];  // Left edge point from top to mid
+//         Vertex right = topBotEdge[y]; // Right edge point from top to bot
+        
+//         // Ensure left is on the left side
+//         if (left.position.x > right.position.x) std::swap(left, right);
 
-        // Get the corresponding vertices and colors
-        Vec4 v0 = positions[idx0];
-        Vec4 v1 = positions[idx1];
-        Vec4 v2 = positions[idx2];
+//         // Fill the pixels between the left and right edges
+//         for (float x = std::ceil(left.position.x); x <= right.position.x; ++x) {
+//             float t = (x - left.position.x) / (right.position.x - left.position.x);
+//             Vec4 interpColor = left.color + (right.color - left.color) * t;
+//             setPixel(static_cast<int>(x), static_cast<int>(y + top.position.y), interpColor);
+//         }
+//     }
 
-        Vec4 c0 = colors[idx0];
-        Vec4 c1 = colors[idx1];
-        Vec4 c2 = colors[idx2];
+//     // bottom half of the triangle
+//     int topMidSize = topMidEdge.size();
+//     for (int y = 0; y < midBotEdge.size(); ++y) {
+//         Vertex left = midBotEdge[y];  // Left edge point from mid to bot
+//         Vertex right = topBotEdge[topMidSize + y]; // Right edge point from top to bot
+        
+//         // Ensure left is on the left side
+//         if (left.position.x > right.position.x) std::swap(left, right);
 
-        // Perspective-correct interpolation
-        if (hypEnabled) 
-        {
-            v0 = v0 / v0.w;
-            v1 = v1 / v1.w;
-            v2 = v2 / v2.w;
-            c0 = c0 / v0.w;
-            c1 = c1 / v1.w;
-            c2 = c2 / v2.w;
-        }
-        if (v1.y < v0.y) { std::swap(v0, v1); std::swap(c0, c1); }
-        if (v2.y < v0.y) { std::swap(v0, v2); std::swap(c0, c2); }
-        if (v2.y < v1.y) { std::swap(v1, v2); std::swap(c1, c2); }
-
-        // Draw the triangle using the vertices and colors
-        scanlineFill(v0, v1, v2, c0, c1, c2);
-    }
-}
-
+//         // Fill the pixels between the left and right edges
+//         for (float x = std::ceil(left.position.x); x <= right.position.x; ++x) {
+//             float t = (x - left.position.x) / (right.position.x - left.position.x);
+//             Vec4 interpColor = left.color + (right.color - left.color) * t;
+//             setPixel(static_cast<int>(x), static_cast<int>(y + mid.position.y), interpColor);
+//         }
+//     }
+// }
 
 
 // Set a pixel in the img 
 void setPixel(int x, int y, const Vec4 &color) {
     if (x < 0 || x >= (int)img->width() || y < 0 || y >= (int)img->height()) {
-        return;  // Out of bounds return
+        return;  // Out of bounds
     }
 
     // pixel_t *pixel = &img->rgba[y * img->width + x];
-    std::cout << "Setting pixel at (" << x << ", " << y << ")" << std::endl;    // Debugging
+    std::cout << "Setting pixel at (" << x << ", " << y << ") with color: ("
+              << color.x << ", " << color.y << ", " << color.z << ", " << color.w << ")\n";    // Debugging
 
     pixel_t &pixel = img->operator[](y)[x]; 
     pixel.r = static_cast<uint8_t>(color.x * 255.0f);  // Convert from [0, 1] to [0, 255]
@@ -258,3 +261,53 @@ void setPixel(int x, int y, const Vec4 &color) {
 //     pixel->b = static_cast<uint8_t>(finalColor.z * 255.0f);
 //     pixel->a = static_cast<uint8_t>(finalColor.w * 255.0f);  // Alpha channel
 // }
+
+
+void drawArraysTriangles(int first, int count) 
+{
+    for (int i = 0; i < count; i += 3) 
+    {
+        // Get the vertices for the triangle
+        Vertex v0 = vertices[first + i];
+        Vertex v1 = vertices[first + i + 1];
+        Vertex v2 = vertices[first + i + 2];
+        std::cout << "Draw arrays triangles starting with " << first + i << " " << first + i + 1 << " " << first + i + 2 << std::endl;
+
+        // Draw the triangle using scanlineFill
+        scanlineFill(v0, v1, v2);
+    }
+}
+
+
+void drawElementsTriangles(int count, int offset) 
+{
+    for (int i = 0; i < count; i += 3) {
+        // Retrieve vertex indices from the element array buffer
+        unsigned int idx0 = elements[offset + i];
+        unsigned int idx1 = elements[offset + i + 1];
+        unsigned int idx2 = elements[offset + i + 2];
+
+        // Get the corresponding vertices from the vertex buffer
+        Vertex v0 = vertices[idx0];
+        Vertex v1 = vertices[idx1];
+        Vertex v2 = vertices[idx2];
+
+        // Perspective-correct interpolation if 'hyp' (hyperbolic interpolation) is enabled
+        if (hypEnabled) {
+            v0.position = v0.position / v0.position.w;
+            v1.position = v1.position / v1.position.w;
+            v2.position = v2.position / v2.position.w;
+            v0.color = v0.color / v0.position.w;
+            v1.color = v1.color / v1.position.w;
+            v2.color = v2.color / v2.position.w;
+        }
+
+        // Sort the vertices by y-coordinate
+        if (v1.position.y < v0.position.y) { std::swap(v0, v1); }
+        if (v2.position.y < v0.position.y) { std::swap(v0, v2); }
+        if (v2.position.y < v1.position.y) { std::swap(v1, v2); }
+
+        // Draw the triangle using scanlineFill
+        scanlineFill(v0, v1, v2);
+    }
+}

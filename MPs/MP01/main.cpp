@@ -9,6 +9,7 @@
 #include "rasterizer.h"
 
 // Global Variables
+std::vector<Vertex> vertices;
 std::vector<Vec4> positions;
 std::vector<Vec4> colors;
 Image* img = nullptr;
@@ -24,15 +25,35 @@ bool hypEnabled  = false;
 // bool decalsEnabled = false;
 // int fsaaLevel = 1;
 std::vector<int> elements;
-// std::vector<Vec4> texcoords;
+std::vector<Vec2> texcoords;
 // std::vector<float> pointSizes;
 
 
 void parseFile(const std::string &filename);
+void createVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>& colors, const std::vector<Vec2>& texcoords);
 
 
+void createVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>& colors, const std::vector<Vec2>& texcoords) 
+{
+    vertices.clear();
+    size_t numVertices = positions.size();
+    
+    for (size_t i = 0; i < numVertices; ++i) 
+    {
+        Vec4 pos = positions[i];
+        Vec4 col = (i < colors.size()) ? colors[i] : Vec4(1, 1, 1, 1);  // Default color is white (1, 1, 1, 1)
+        Vec2 tex = (i < texcoords.size()) ? texcoords[i] : Vec2(0, 0);  // Default texcoord is (0, 0)
+        
+        // Create vertex and push into the vertices vector
+        Vertex vertex(pos, col, tex);
+        vertices.push_back(vertex);
+        std::cout << "createVertices " << pos.x <<" "<< pos.y <<" " << pos.z <<" " << pos.w <<" " << col.x <<" " << col.y <<" " << col.z <<" " << col.w <<" " << std::endl;
+    }
+}
 
-void parseFile(const std::string &filename) {
+
+void parseFile(const std::string &filename) 
+{
     std::ifstream infile(filename);
     std::string inputLine;
     int width{1}, height{1};
@@ -68,6 +89,7 @@ void parseFile(const std::string &filename) {
         // else if (keyword == "fsaa") 
         // {
         //     iss >> fsaaLevel;
+        //     std::cout << "fsaa Level set: " << fsaaLevel << std::endl;
         // } 
         // else if (keyword == "cull") 
         // {
@@ -92,39 +114,32 @@ void parseFile(const std::string &filename) {
         //     }
         // } 
         // Buffer provision
-        else if (keyword == "position") {
+        else if (keyword == "position") 
+        {
             int size;
             iss >> size;
             float num;
-            // while (iss >> num) 
-            // {
-            //     Vec4 pos;
-            //     pos.x = num;
-            //     if (size > 1) iss >> pos.y;
-            //     if (size > 2) iss >> pos.z;
-            //     if (size > 3) iss >> pos.w;
-            //     positions.push_back(pos);            
-            // }
              std::vector<float> positionData;
-            while (iss >> num) {
+            while (iss >> num) 
+            {
                 positionData.push_back(num);
             }
-
-            // Process the positions and apply the viewport transformation
-            for (size_t i = 0; i < positionData.size(); i += size) {
+            // Get the positions
+            for (size_t i = 0; i < positionData.size(); i += size) 
+            {
                 Vec4 pos;
                 pos.x = positionData[i];
                 pos.y = (size > 1) ? positionData[i + 1] : 0;
                 pos.z = (size > 2) ? positionData[i + 2] : 0;
                 pos.w = (size > 3) ? positionData[i + 3] : 1; 
 
-                // Apply viewport transformation (division by w and move to screen space)
-                pos.x = ((pos.x / pos.w) + 1) * (width / 2.0);
-                pos.y = ((pos.y / pos.w) + 1) * (height / 2.0);
+                // Viewport transformation
+                pos.x = ((pos.x / pos.w) + 1) * (width / 2.0f);
+                pos.y = ((pos.y / pos.w) + 1) * (height / 2.0f);
                 positions.push_back(pos);
+                std::cout << "pos: " << pos.x << " "<< pos.y<< " " << pos.z << " "<< pos.w<< std::endl;
             }
             std::cout << "Position" << size << std::endl;    //Debugging
-
         } 
         else if (keyword == "color") {
             int size;
@@ -138,18 +153,22 @@ void parseFile(const std::string &filename) {
                 if (size > 2) iss >> col.z;
                 if (size > 3) iss >> col.w;
                 colors.push_back(col);
+                std::cout << "col: " << col.x << " "<< col.y<< " " << col.z << " "<< col.w<< std::endl;
+
             }
         }
-        // else if (keyword == "texcoord")
-        // {
-        //     int size;
-        //     iss >> size;
-        //     float s, t;
-        //     while (iss >> s >> t) 
-        //     {
-        //         texcoords.push_back(Vec4(s, t, 0, 1));
-        //     }
-        // }
+        else if (keyword == "texcoord")
+        {
+            int size;
+            iss >> size;
+            float s, t;
+            while (iss >> s >> t) 
+            {
+                texcoords.push_back(Vec2(s, t));
+                std::cout << "texcoords: " << s << " "<< t << std::endl;
+
+            }
+        }
         // else if (keyword == "pointsize")
         // {
         //     float size;
@@ -161,30 +180,34 @@ void parseFile(const std::string &filename) {
         else if (keyword == "elements") 
         {
             int elementIdx;
-            while (iss >> elementIdx) {
+            while (iss >> elementIdx) 
+            {
                 elements.push_back(elementIdx);
             }
         }
-      
         else if (keyword == "drawArraysTriangles")
         {
             int first, count;
             iss >> first >> count;
-            
             std::cout << "DrawArraysTriangles" << first << ":"<< count <<  std::endl;    // Debugging
-
+            createVertices(positions, colors, texcoords);
             drawArraysTriangles(first, count);
         } 
-        else if (keyword == "drawElementsTriangles") {
+        else if (keyword == "drawElementsTriangles") 
+        {
             int count, offset;
             iss >> count >> offset;
+            std::cout << "drawElementsTriangles" << count << ":"<< offset <<  std::endl;    // Debugging
+            createVertices(positions, colors, texcoords);
             drawElementsTriangles(count, offset);
         } 
-        // else if (keyword == "drawArraysPoints") {
+        // else if (keyword == "drawArraysPoints") 
+        // {
         //     int first, count;
         //     iss >> first >> count;
         //     // Draw points based on positions and pointSizes
-        //     // Example: renderPoint(positions[first], pointSizes[first]);
+        //     createVertices(positions, colors, texcoords);
+        //     drawArraysPoints(positions[first], pointSizes[first]);
         // }
 
     }
