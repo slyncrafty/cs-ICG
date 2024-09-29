@@ -30,10 +30,10 @@ std::vector<Vec2> texcoords;
 
 
 void parseFile(const std::string &filename);
-void createVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>& colors, const std::vector<Vec2>& texcoords);
+void initVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>& colors, const std::vector<Vec2>& texcoords);
 
 
-void createVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>& colors, const std::vector<Vec2>& texcoords) 
+void initVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>& colors, const std::vector<Vec2>& texcoords) 
 {
     vertices.clear();
     size_t numVertices = positions.size();
@@ -41,13 +41,13 @@ void createVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>&
     for (size_t i = 0; i < numVertices; ++i) 
     {
         Vec4 pos = positions[i];
-        Vec4 col = (i < colors.size()) ? colors[i] : Vec4(1, 1, 1, 1);  // Default color is white (1, 1, 1, 1)
-        Vec2 tex = (i < texcoords.size()) ? texcoords[i] : Vec2(0, 0);  // Default texcoord is (0, 0)
+        Vec4 col = (i < colors.size()) ? colors[i] : Vec4();  
+        Vec2 tex = (i < texcoords.size()) ? texcoords[i] : Vec2();
         
         // Create vertex and push into the vertices vector
         Vertex vertex(pos, col, tex);
         vertices.push_back(vertex);
-        std::cout << "createVertices " << pos.x <<" "<< pos.y <<" " << pos.z <<" " << pos.w <<" " << col.x <<" " << col.y <<" " << col.z <<" " << col.w <<" " << std::endl;
+        std::cout << "initVertices " << pos.x <<" "<< pos.y <<" " << pos.z <<" " << pos.w <<" " << col.x <<" " << col.y <<" " << col.z <<" " << col.w <<" " << std::endl; // Debugging
     }
 }
 
@@ -74,6 +74,11 @@ void parseFile(const std::string &filename)
         {
             depthEnabled = true;
             std::cout << "Depth buffer and tests enabled." << std::endl;
+            // Read indices
+            uint16_t index;
+            while (iss >> index) {
+                elements.push_back(index);
+            }
         } 
         else if (keyword == "sRGB") 
         {
@@ -116,10 +121,13 @@ void parseFile(const std::string &filename)
         // Buffer provision
         else if (keyword == "position") 
         {
+            vertices.clear();
+            positions.clear();
+
             int size;
             iss >> size;
             float num;
-             std::vector<float> positionData;
+            std::vector<float> positionData;
             while (iss >> num) 
             {
                 positionData.push_back(num);
@@ -133,15 +141,16 @@ void parseFile(const std::string &filename)
                 pos.z = (size > 2) ? positionData[i + 2] : 0;
                 pos.w = (size > 3) ? positionData[i + 3] : 1; 
 
-                // Viewport transformation
+                // transformation
                 pos.x = ((pos.x / pos.w) + 1) * (width / 2.0f);
                 pos.y = ((pos.y / pos.w) + 1) * (height / 2.0f);
                 positions.push_back(pos);
-                std::cout << "pos: " << pos.x << " "<< pos.y<< " " << pos.z << " "<< pos.w<< std::endl;
+                std::cout << "t-pos: " << pos.x << " "<< pos.y<< " " << pos.z << " "<< pos.w<< std::endl; // Debugging
             }
             std::cout << "Position" << size << std::endl;    //Debugging
         } 
         else if (keyword == "color") {
+            colors.clear();
             int size;
             iss >> size;
             float num;
@@ -153,12 +162,13 @@ void parseFile(const std::string &filename)
                 if (size > 2) iss >> col.z;
                 if (size > 3) iss >> col.w;
                 colors.push_back(col);
-                std::cout << "col: " << col.x << " "<< col.y<< " " << col.z << " "<< col.w<< std::endl;
+                std::cout << "col: " << col.x << " "<< col.y<< " " << col.z << " "<< col.w<< std::endl;  // Debugging
 
             }
         }
         else if (keyword == "texcoord")
         {
+            texcoords.clear();
             int size;
             iss >> size;
             float s, t;
@@ -190,7 +200,7 @@ void parseFile(const std::string &filename)
             int first, count;
             iss >> first >> count;
             std::cout << "DrawArraysTriangles" << first << ":"<< count <<  std::endl;    // Debugging
-            createVertices(positions, colors, texcoords);
+            initVertices(positions, colors, texcoords);
             drawArraysTriangles(first, count);
         } 
         else if (keyword == "drawElementsTriangles") 
@@ -198,7 +208,7 @@ void parseFile(const std::string &filename)
             int count, offset;
             iss >> count >> offset;
             std::cout << "drawElementsTriangles" << count << ":"<< offset <<  std::endl;    // Debugging
-            createVertices(positions, colors, texcoords);
+            initVertices(positions, colors, texcoords);
             drawElementsTriangles(count, offset);
         } 
         // else if (keyword == "drawArraysPoints") 
@@ -206,7 +216,7 @@ void parseFile(const std::string &filename)
         //     int first, count;
         //     iss >> first >> count;
         //     // Draw points based on positions and pointSizes
-        //     createVertices(positions, colors, texcoords);
+        //     initVertices(positions, colors, texcoords);
         //     drawArraysPoints(positions[first], pointSizes[first]);
         // }
 

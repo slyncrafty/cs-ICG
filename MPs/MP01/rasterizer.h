@@ -1,5 +1,7 @@
 #pragma once
 #include <vector>
+#include <cmath>
+#include <algorithm>
 #include "uselibpng.h"
 
 
@@ -13,21 +15,13 @@ struct Vec2 {
     // Constructor to initialize with values
     Vec2(float _x, float _y) : x(_x), y(_y) {}
 
-    Vec2 operator+(const Vec2 &v) const {
-        return Vec2(x + v.x, y + v.y);
-    }
+    Vec2 operator+(const Vec2 &v) const;
 
-    Vec2 operator-(const Vec2 &v) const {
-        return Vec2(x - v.x, y - v.y);
-    }
+    Vec2 operator-(const Vec2 &v) const;
 
-    Vec2 operator*(float scalar) const {
-        return Vec2(x * scalar, y * scalar);
-    }
+    Vec2 operator*(float scalar) const;
 
-    Vec2 operator/(float scalar) const {
-        return Vec2(x / scalar, y / scalar);
-    }
+    Vec2 operator/(float scalar) const;
 };
 
 struct Vec4 {
@@ -45,22 +39,31 @@ struct Vec4 {
         return Vec4(r, g, b, a);
     }
     
-    Vec4 operator+(const Vec4 &v) const {
-        return Vec4(x + v.x, y + v.y, z + v.z, w + v.w);
+    Vec4 operator+(const Vec4 &v) const;
+
+    Vec4 operator-(const Vec4 &v) const;
+
+    Vec4 operator*(float scalar) const;
+
+    Vec4 operator/(float scalar) const;
+
+    float& operator[](int index) {
+        switch (index) {
+            case 0: return x; case 1: return y; case 2: return z; case 3: return w;
+            default: throw std::out_of_range("Vec4 index out of range");
+        }
     }
 
-    Vec4 operator-(const Vec4 &v) const {
-        return Vec4(x - v.x, y - v.y, z - v.z, w - v.w);
-    }
-
-    Vec4 operator*(float scalar) const {
-        return Vec4(x * scalar, y * scalar, z * scalar, w * scalar);
-    }
-
-    Vec4 operator/(float scalar) const {
-        return Vec4(x / scalar, y / scalar, z / scalar, w / scalar);
+    const float& operator[](int index) const {
+        switch (index) {
+            case 0: return x; case 1: return y; case 2: return z; case 3: return w;
+            default: throw std::out_of_range("Vec4 index out of range");
+        }
     }
 };
+
+Vec4 operator*(float scalar, const Vec4& vec);
+
 
 struct Vertex {
     Vec4 position;  // (x, y, z, w)
@@ -75,6 +78,38 @@ struct Vertex {
     }
     Vertex(const Vec4 &pos, const Vec4 &col, const Vec2 &tex) 
         : position(pos), color(col), texcoord(tex) {}
+
+    Vertex operator-(const Vertex& other) const {
+        Vertex result;
+        result.position = this->position - other.position;
+        result.color = this->color - other.color;
+        return result;
+    }
+
+    // Add two vertices (add their positions and colors)
+    Vertex operator+(const Vertex& other) const {
+        Vertex result;
+        result.position = this->position + other.position;
+        result.color = this->color + other.color;
+        return result;
+    }
+
+    // Scalar multiplication for interpolation (position and color)
+    Vertex operator*(float scalar) const {
+        Vertex result;
+        result.position = this->position * scalar;
+        result.color = this->color * scalar;
+        return result;
+    }
+
+    // Scalar multiplication for interpolation (position and color)
+    Vertex operator/(float scalar) const {
+        Vertex result;
+        result.position = this->position / scalar;
+        result.color = this->color / scalar;
+        return result;
+    }
+
 };
 
 
@@ -92,7 +127,7 @@ extern std::vector<float> depthBuffer;
 std::vector<Vertex> DDA(const Vertex &a, const Vertex &b, bool dirY);
 void scanlineFill(const Vertex &p1, const Vertex &p2, const Vertex &p3);
 
-void setPixel(int x, int y, const Vec4 &color);
+void setPixel(Vertex p);
 
 void drawArraysTriangles(int first, int count);
 void drawElementsTriangles(int count, int offset);
