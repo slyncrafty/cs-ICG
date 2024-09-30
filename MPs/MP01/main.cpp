@@ -17,16 +17,11 @@ std::string fileName;
 
 // Mode Setting
 bool depthEnabled = false;
-std::vector<std::vector<float>> depthBuffer; //std::vector<float> depthBuffer;
+std::vector<std::vector<float>> depthBuffer; 
 bool sRGBEnabled = false;
 bool hypEnabled  = false;
-// bool frustumClippingEnabled = false;
-// bool cullingEnabled = false;
-// bool decalsEnabled = false;
-// int fsaaLevel = 1;
 std::vector<int> elements;
 std::vector<Vec2> texcoords;
-// std::vector<float> pointSizes;
 
 
 void parseFile(const std::string &filename);
@@ -46,25 +41,22 @@ void initVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>& c
         if(depthEnabled)
         {
             initDepthBuffer((int)img->width(), (int)img->height());
-            depthBuffer[positions[i].y][positions[i].x] = colors[i].z;
-        }  
-        Vec2 tex = (i < texcoords.size()) ? texcoords[i] : Vec2();
-        
+            if (pos.x >= 0 && pos.x < (int)img->width() && pos.y >= 0 && pos.y < (int)img->height()) 
+            {
+                depthBuffer[pos.y][pos.x] = colors[i].z;
+            }
+        }
+        //Vec2 tex = (i < 2) ? texcoords[i] : Vec2();
+        Vec2 tex;
         // Create vertex and push into the vertices vector
         Vertex vertex(pos, col, tex);
         vertices.push_back(vertex);
         std::cout << "initVertices " << pos.x <<" "<< pos.y <<" " << pos.z <<" " << pos.w <<" " << col.x <<" " << col.y <<" " << col.z <<" " << col.w <<" " << std::endl; // Debugging
-        
     }
 }
 
 void initDepthBuffer(int width, int height) {
     depthBuffer.resize(height, std::vector<float>(width, std::numeric_limits<float>::infinity()));
-}
-void clearDepthBuffer() {
-    for (auto& row : depthBuffer) {
-        std::fill(row.begin(), row.end(), std::numeric_limits<float>::infinity());
-    }
 }
 
 
@@ -102,33 +94,6 @@ void parseFile(const std::string &filename)
             std::cout << "Hyperbolic interpolation enabled." << std::endl;
 
         } 
-        // else if (keyword == "fsaa") 
-        // {
-        //     iss >> fsaaLevel;
-        //     std::cout << "fsaa Level set: " << fsaaLevel << std::endl;
-        // } 
-        // else if (keyword == "cull") 
-        // {
-        //     cullingEnabled = true;
-        // } 
-        // else if (keyword == "decals") 
-        // {
-        //     decalsEnabled = true;
-        // } 
-        // else if (keyword == "frustum") 
-        // {
-        //     frustumClippingEnabled = true;
-        // }
-        // else if (keyword == "texture") {
-        //     std::string textureFile;
-        //     iss >> textureFile;
-        //     // Handle texture loading (can use libpng to read texture from PNG)
-        // } else if (keyword == "uniformMatrix") {
-        //     float matrix[16];
-        //     for (int i = 0; i < 16; ++i) {
-        //         iss >> matrix[i];
-        //     }
-        // } 
         // Buffer provision
         else if (keyword == "position") 
         {
@@ -156,7 +121,7 @@ void parseFile(const std::string &filename)
                 pos.x = ((pos.x / pos.w) + 1) * (width / 2.0f);
                 pos.y = ((pos.y / pos.w) + 1) * (height / 2.0f);
                 positions.push_back(pos);
-                //std::cout << "t-pos: " << pos.x << " "<< pos.y<< " " << pos.z << " "<< pos.w<< std::endl; // Debugging
+                std::cout << "t-pos: " << pos.x << " "<< pos.y<< " " << pos.z << " "<< pos.w<< std::endl; // Debugging
             }
             std::cout << "Position" << size << std::endl;    //Debugging
         } 
@@ -173,7 +138,7 @@ void parseFile(const std::string &filename)
                 if (size > 2) iss >> col.z;
                 if (size > 3) iss >> col.w;
                 colors.push_back(col);
-                //std::cout << "col: " << col.x << " "<< col.y<< " " << col.z << " "<< col.w<< std::endl;  // Debugging
+                std::cout << "col: " << col.x << " "<< col.y<< " " << col.z << " "<< col.w<< std::endl;  // Debugging
 
             }
         }
@@ -190,14 +155,6 @@ void parseFile(const std::string &filename)
 
             }
         }
-        // else if (keyword == "pointsize")
-        // {
-        //     float size;
-        //     while (iss >> size) 
-        //     {
-        //         pointSizes.push_back(size);
-        //     }
-        // }
         else if (keyword == "elements") 
         {
             int elementIdx;
@@ -222,15 +179,6 @@ void parseFile(const std::string &filename)
             initVertices(positions, colors, texcoords);
             drawElementsTriangles(count, offset);
         } 
-        // else if (keyword == "drawArraysPoints") 
-        // {
-        //     int first, count;
-        //     iss >> first >> count;
-        //     // Draw points based on positions and pointSizes
-        //     initVertices(positions, colors, texcoords);
-        //     drawArraysPoints(positions[first], pointSizes[first]);
-        // }
-
     }
 }
 

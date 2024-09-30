@@ -128,6 +128,6 @@ std::vector<Vertex> DDA(const Vertex &a, const Vertex &b, bool dirY);
 void scanlineFill(const Vertex &p1, const Vertex &p2, const Vertex &p3);
 
 void setPixel(Vertex p);
-
+float converToSRGB(float value);
 void drawArraysTriangles(int first, int count);
 void drawElementsTriangles(int count, int offset);

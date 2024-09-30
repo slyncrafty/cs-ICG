@@ -97,7 +97,9 @@ std::vector<Vertex> DDA(const Vertex &start, const Vertex &end, bool dirY) {
 
 
 // Scanline algorithm
-void scanlineFill(const Vertex& p_input, const Vertex& q_input, const Vertex& r_input) {
+void Scanline(const Vertex& p_input, const Vertex& q_input, const Vertex& r_input) 
+{
+    std::cout << "Scanline..." << std::endl;
     int d_x = 0;
     int d_y = 1; 
     // Copy inputs
@@ -181,7 +183,7 @@ void scanlineFill(const Vertex& p_input, const Vertex& q_input, const Vertex& r_
         std::vector<Vertex> scanline = DDA(p_edge, p_long, false);
         p_edge = p_edge + s_edge;
         p_long = p_long + s_long;
-        std::cout << "Bot half working..." << std::endl;
+        // std::cout << "Bot half working..." << std::endl;    // Debugging
     }
 }
 
@@ -194,7 +196,6 @@ void setPixel(Vertex p) {
     if (x < 0 || x >= (int)img->width() || y < 0 || y >= (int)img->height()) {
         return;  // Out of bounds
     }
-    // pixel_t *pixel = &img->rgba[y * img->width + x];
     //// alpha blending
     // float srcAlpha = color.w;
     // float invAlpha = 1.0f - srcAlpha;
@@ -202,11 +203,25 @@ void setPixel(Vertex p) {
     std::cout << "Setting pixel: (" << p.position.x << ", " << p.position.y << ") & color: ("
               << p.color.x << ", " << p.color.y << ", " << p.color.z << ", " << p.color.w << ")\n";    // Debugging
 
-    if (depthEnabled) {
+    // Update the depth buffer
+    if (sRGBEnabled) // gamma correction 
+    {
+        p.color.x = converToSRGB(p.color.x);
+        p.color.y = converToSRGB(p.color.y);
+        p.color.z = converToSRGB(p.color.z);
+    }
+    if (hypEnabled) 
+    {
+        p.color = p.color / (1 / p.position.w);
+    }
+
+    // Perform depth testing if enabled
+    if (depthEnabled) 
+    {
         if (depth < depthBuffer[y][x]) 
         {
             depthBuffer[y][x] = depth;
-            pixel_t &pixel = img->operator[](static_cast<int>(p.position.y))[static_cast<int>(p.position.x)]; 
+            pixel_t &pixel = img->operator[](y)[x];
             pixel.r = static_cast<uint8_t>(p.color.x * 255.0f);
             pixel.g = static_cast<uint8_t>(p.color.y * 255.0f);
             pixel.b = static_cast<uint8_t>(p.color.z * 255.0f);
@@ -215,46 +230,22 @@ void setPixel(Vertex p) {
     } 
     else 
     {
-        pixel_t &pixel = img->operator[](static_cast<int>(p.position.y))[static_cast<int>(p.position.x)]; 
-        pixel.r = static_cast<uint8_t>(p.color.x * 255.0f);  // Convert range from [0, 1] to [0, 255]
+        // Draw pixel without depth testing
+        pixel_t &pixel = img->operator[](y)[x];
+        pixel.r = static_cast<uint8_t>(p.color.x * 255.0f);
         pixel.g = static_cast<uint8_t>(p.color.y * 255.0f);
         pixel.b = static_cast<uint8_t>(p.color.z * 255.0f);
-        pixel.a = static_cast<uint8_t>(p.color.w * 255.0f);  // Alpha channel
+        pixel.a = static_cast<uint8_t>(p.color.w * 255.0f);
     }
 }
 
-// // Set a pixel in the img with Depth Test and sRGB Conversion
-// void setPixel(int x, int y, const Vec4 &color, float depth) {
-//     if (x < 0 || x >= (int)img->width() || y < 0 || y >= (int)img->height()) {
-//         return;  // Out of bounds
-//     }
-
-//     // Perform depth test if enabled
-//     if (depthEnabled && depth >= depthBuffer[y * img->width() + x]) {
-//         return;  // Skip the pixel if it's behind the existing depth
-//     }
-
-//     // Update the depth buffer
-//     depthBuffer[y * img->width() + x] = depth;
-
-//     // Get the pixel pointer
-//     pixel_t *pixel = &img->operator[](y)[x];
-
-//     // Apply sRGB conversion if enabled
-//     Vec4 finalColor = color;
-//     if (sRGBEnabled) {
-//         finalColor.x = std::pow(finalColor.x, 1.0 / 2.2);  // Gamma correction for sRGB
-//         finalColor.y = std::pow(finalColor.y, 1.0 / 2.2);
-//         finalColor.z = std::pow(finalColor.z, 1.0 / 2.2);
-//     }
-
-//     // Set the pixel values
-//     pixel->r = static_cast<uint8_t>(finalColor.x * 255.0f);
-//     pixel->g = static_cast<uint8_t>(finalColor.y * 255.0f);
-//     pixel->b = static_cast<uint8_t>(finalColor.z * 255.0f);
-//     pixel->a = static_cast<uint8_t>(finalColor.w * 255.0f);  // Alpha channel
-// }
-
+float converToSRGB(float value) {
+    if (value <= 0.0031308f) {
+        return 12.92f * value;
+    } else {
+        return 1.055f * std::pow(value, 1.0f / 2.4f) - 0.055f;
+    }
+}
 
 void drawArraysTriangles(int first, int count) 
 {
@@ -265,9 +256,17 @@ void drawArraysTriangles(int first, int count)
         Vertex v1 = vertices[first + i + 1];
         Vertex v2 = vertices[first + i + 2];
         std::cout << "Draw arrays triangles starting with " << first + i << " " << first + i + 1 << " " << first + i + 2 << std::endl;
-
+        if (hypEnabled) 
+        {
+            v0.position = v0.position / v0.position.w;
+            v1.position = v1.position / v1.position.w;
+            v2.position = v2.position / v2.position.w;
+            v0.color = v0.color / v0.position.w;
+            v1.color = v1.color / v1.position.w;
+            v2.color = v2.color / v2.position.w;
+        }
         // Draw the triangle using scanline
-        scanlineFill(v0, v1, v2);
+        Scanline(v0, v1, v2);
     }
 }
 
@@ -300,13 +299,11 @@ void drawElementsTriangles(int count, int offset)
             v2.color = v2.color / v2.position.w;
         }
 
-        // Sort the vertices by y-coordinate
         if (v1.position.y < v0.position.y) { std::swap(v0, v1); }
         if (v2.position.y < v0.position.y) { std::swap(v0, v2); }
         if (v2.position.y < v1.position.y) { std::swap(v1, v2); }
 
-        // Draw the triangle using scanlineFill
-        scanlineFill(v0, v1, v2);
+        Scanline(v0, v1, v2);
     }
 }
 
