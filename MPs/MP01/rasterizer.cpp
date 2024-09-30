@@ -46,74 +46,16 @@ Vec4 operator*(float scalar, const Vec4& vec) {
 }
 
 
-// // //0926
-// std::vector<Vertex> DDA(const Vertex &start, const Vertex &end, bool dirY) {
-//     /*
-//     Finds all points vector p between vector a and vector b where p_d is an integer
-
-//     Inputs:
-//     - Vertex start
-//     - Vertex end
-//     Output:
-//     - all points between start and end
-//     */
-//     // set up
-//     Vertex a = start;
-//     Vertex b = end;
-//     int d = dirY? 1 : 0;
-
-//     // 1: If a_d == b_d, return (no points found)
-//     if (a.position[d] == b.position[d]) return {};
-
-//     // 2: If a_d > b_d, swap a and b
-//     if (a.position[d] > b.position[d]) std::swap(a, b);
-    
-//     // 3: Calculate deltas
-//     Vertex delta = b - a;
-//     // Vec4 deltaPos = b.position - a.position;                   
-//     // Vec4 deltaCol = b.color - a.color;              
-//     // Vec2 deltaTex = b.texcoord - a.texcoord; 
-
-//     // 4: step s = delta / delta_d
-//     float delta_d = delta.position[d];
-//     Vertex s = delta / delta_d;
-//     // Vec4 stepPos = deltaPos / step;     // Position increment per step
-//     // Vec4 stepCol = deltaCol / step;     // Color increment per step
-//     // Vec2 stepTex = deltaTex / step;     // Texcoord increment per step
-
-//     // 5: Find the first potential point: e = ceiling(a_d) - a_d
-//     float e = std::ceil(a.position[d]) - a.position[d];
-
-//     // Step 6: o = e * s
-//     Vertex o = s * e;
-    
-//     // Vertex currVertex = a;
-//     // currVertex.position = currVertex.position + stepPos * offset;
-//     // currVertex.color = currVertex.color + stepCol * offset;
-//     // currVertex.texcoord = currVertex.texcoord + stepTex * offset;
-
-//     // 7: p = a + o
-//     Vertex p = a + o;
-
-//     // 8: Find all points; While p_d < b_d repeat
-//     std::vector<Vertex> intpVertices; 
-//     while (p.position[d] < b.position[d])
-//     {
-//         intpVertices.push_back(p);
-//         p = p + s;              // Add s to p to next
-//         // currVertex.position = currVertex.position + stepPos;
-//         // currVertex.color = currVertex.color + stepCol;
-//         // currVertex.texcoord = currVertex.texcoord + stepTex;
-//     }
-
-//     return intpVertices;  // Return all the interpolated vertices
-// }
-
-
-
-
 std::vector<Vertex> DDA(const Vertex &start, const Vertex &end, bool dirY) {
+    /*
+    Finds all points vector p between vector a and vector b where p_d is an integer
 
+    Inputs:
+    - Vertex start
+    - Vertex end
+    Output:
+    - all points between start and end
+    */
     // set up
     Vertex a = start;
     Vertex b = end;    
@@ -147,11 +89,12 @@ std::vector<Vertex> DDA(const Vertex &start, const Vertex &end, bool dirY) {
     {
         intpVertices.push_back(p);
         setPixel(p);
-        p = p + s;              // Add s to p to next
+        p = p + s;
     }
 
     return intpVertices;  // Return all the interpolated vertices
 }
+
 
 // Scanline algorithm
 void scanlineFill(const Vertex& p_input, const Vertex& q_input, const Vertex& r_input) {
@@ -243,107 +186,14 @@ void scanlineFill(const Vertex& p_input, const Vertex& q_input, const Vertex& r_
 }
 
 
-// // Wrx!
-// void scanlineFill(const Vertex &p, const Vertex &q, const Vertex &r) {
-//     // Step 1: Sort the vertices by y
-//     std::vector<Vertex> verts = {p, q, r};
-//     std::sort(verts.begin(), verts.end(), [](const Vertex &a, const Vertex &b) {
-//         return a.position.y < b.position.y;
-//     });
-//     const Vertex &t = verts[0];
-//     const Vertex &m = verts[1];
-//     const Vertex &b = verts[2];
-
-//     // Step 2: Compute the y-coordinate ranges for the top and bottom halves of the triangle
-//     int yStart = static_cast<int>(std::ceil(t.position.y));
-//     int yEnd = static_cast<int>(std::floor(b.position.y));
-
-//     if (yEnd < yStart) return;  // No valid scanlines to draw
-
-
-//     // Step 3: Loop over each scanline
-//     for (int y = yStart; y <= yEnd; ++y) 
-//     {
-//         bool isTopHalf = y < m.position.y;
-//         if(isTopHalf)
-//         {
-//             float segmentHeight = m.position.y - t.position.y;
-//             if (segmentHeight == 0) continue;  // Avoid division by zero
-
-//             // Compute interpolation factors for edges
-//             float tA = (y - t.position.y) / (b.position.y - t.position.y);
-//             float tB = (y - t.position.y) / (m.position.y - t.position.y);
-
-//             // Compute x positions for the left and right edges
-//             float xA = t.position.x + (b.position.x - t.position.x) * tA;
-//             float xB = t.position.x + (m.position.x - t.position.x) * tB;
-            
-//             // Interpolate colors
-//             Vec4 colorA = t.color + (b.color - t.color) * tA;
-//             Vec4 colorB = t.color + (m.color - t.color) * tB;
-//             // Ensure left is on the left
-//             if (xA > xB) {
-//                 std::swap(xA, xB);
-//                 std::swap(colorA, colorB);
-//             }
-
-//             // Compute x-coordinate range for the scanline
-//             int xStart = static_cast<int>(std::ceil(xA));
-//             int xEnd = static_cast<int>(std::floor(xB));
-
-//             // Step 4: Draw the scanline
-//             for (int x = xStart; x <= xEnd; ++x) {
-//                 float t = (x - xA) / (xB - xA);
-//                 Vec4 color = colorA + (colorB - colorA) * t;
-
-//                 setPixel(x, y, color);
-//             }
-//         }
-//         else
-//         {
-//             float segmentHeight = (b.position.y - m.position.y);
-//             if (segmentHeight == 0) continue;  // Avoid division by zero
-
-//             // Compute interpolation factors for edges
-//             float tA = (y - t.position.y) / (b.position.y - t.position.y);
-//             float tB = (y - m.position.y) / (b.position.y - m.position.y);
-
-//             // Compute x positions for the left and right edges
-//             float xA = t.position.x + (b.position.x - t.position.x) * tA;
-//             float xB = m.position.x + (b.position.x - m.position.x) * tB;
-//             std::cout<< "Bot_half: " << segmentHeight << " tA " << tA << " tB " << tB <<std::endl;  
-
-//             // Interpolate colors
-//             Vec4 colorA = t.color + (b.color - t.color) * tA;
-//             Vec4 colorB = m.color + (b.color - m.color) * tB;
-//             // Ensure left is on the left
-//             if (xA > xB) {
-//                 std::swap(xA, xB);
-//                 std::swap(colorA, colorB);
-//             }
-
-//             // Compute x-coordinate range for the scanline
-//             int xStart = static_cast<int>(std::ceil(xA));
-//             int xEnd = static_cast<int>(std::floor(xB));
-
-//             // Step 4: Draw the scanline
-//             for (int x = xStart; x <= xEnd; ++x) {
-//                 float t = (x - xA) / (xB - xA);
-//                 Vec4 color = colorA + (colorB - colorA) * t;
-//                 setPixel(x, y, color);
-//             }
-//         }
-        
-//     }
-// }
-
-
 // Set a pixel in the img 
 void setPixel(Vertex p) {
-    if (p.position.x < 0 || p.position.x >= (int)img->width() || p.position.y < 0 || p.position.y >= (int)img->height()) {
+    int x = static_cast<int>(p.position.x);
+    int y = static_cast<int>(p.position.y);
+    float depth = p.position.z;
+    if (x < 0 || x >= (int)img->width() || y < 0 || y >= (int)img->height()) {
         return;  // Out of bounds
     }
-
     // pixel_t *pixel = &img->rgba[y * img->width + x];
     //// alpha blending
     // float srcAlpha = color.w;
@@ -352,11 +202,25 @@ void setPixel(Vertex p) {
     std::cout << "Setting pixel: (" << p.position.x << ", " << p.position.y << ") & color: ("
               << p.color.x << ", " << p.color.y << ", " << p.color.z << ", " << p.color.w << ")\n";    // Debugging
 
-    pixel_t &pixel = img->operator[](static_cast<int>(p.position.y))[static_cast<int>(p.position.x)]; 
-    pixel.r = static_cast<uint8_t>(p.color.x * 255.0f);  // Convert range from [0, 1] to [0, 255]
-    pixel.g = static_cast<uint8_t>(p.color.y * 255.0f);
-    pixel.b = static_cast<uint8_t>(p.color.z * 255.0f);
-    pixel.a = static_cast<uint8_t>(p.color.w * 255.0f);  // Alpha channel
+    if (depthEnabled) {
+        if (depth < depthBuffer[y][x]) 
+        {
+            depthBuffer[y][x] = depth;
+            pixel_t &pixel = img->operator[](static_cast<int>(p.position.y))[static_cast<int>(p.position.x)]; 
+            pixel.r = static_cast<uint8_t>(p.color.x * 255.0f);
+            pixel.g = static_cast<uint8_t>(p.color.y * 255.0f);
+            pixel.b = static_cast<uint8_t>(p.color.z * 255.0f);
+            pixel.a = static_cast<uint8_t>(p.color.w * 255.0f);
+        }
+    } 
+    else 
+    {
+        pixel_t &pixel = img->operator[](static_cast<int>(p.position.y))[static_cast<int>(p.position.x)]; 
+        pixel.r = static_cast<uint8_t>(p.color.x * 255.0f);  // Convert range from [0, 1] to [0, 255]
+        pixel.g = static_cast<uint8_t>(p.color.y * 255.0f);
+        pixel.b = static_cast<uint8_t>(p.color.z * 255.0f);
+        pixel.a = static_cast<uint8_t>(p.color.w * 255.0f);  // Alpha channel
+    }
 }
 
 // // Set a pixel in the img with Depth Test and sRGB Conversion

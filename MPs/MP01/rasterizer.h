@@ -118,11 +118,11 @@ extern std::vector<Vec4> positions;
 extern std::vector<Vec4> colors;
 extern Image* img;
 extern std::vector<int> elements;
+extern std::vector<std::vector<float>> depthBuffer; // std::vector<float> depthBuffer;
 extern std::vector<Vec2> texcoords;
 extern bool hypEnabled;
 extern bool sRGBEnabled;
 extern bool depthEnabled;
-extern std::vector<float> depthBuffer;
 
 std::vector<Vertex> DDA(const Vertex &a, const Vertex &b, bool dirY);
 void scanlineFill(const Vertex &p1, const Vertex &p2, const Vertex &p3);

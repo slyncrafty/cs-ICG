@@ -17,7 +17,7 @@ std::string fileName;
 
 // Mode Setting
 bool depthEnabled = false;
-std::vector<float> depthBuffer;
+std::vector<std::vector<float>> depthBuffer; //std::vector<float> depthBuffer;
 bool sRGBEnabled = false;
 bool hypEnabled  = false;
 // bool frustumClippingEnabled = false;
@@ -31,7 +31,8 @@ std::vector<Vec2> texcoords;
 
 void parseFile(const std::string &filename);
 void initVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>& colors, const std::vector<Vec2>& texcoords);
-
+void initDepthBuffer(int width, int height);
+void clearDepthBuffer();
 
 void initVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>& colors, const std::vector<Vec2>& texcoords) 
 {
@@ -41,13 +42,28 @@ void initVertices(const std::vector<Vec4>& positions, const std::vector<Vec4>& c
     for (size_t i = 0; i < numVertices; ++i) 
     {
         Vec4 pos = positions[i];
-        Vec4 col = (i < colors.size()) ? colors[i] : Vec4();  
+        Vec4 col = (i < colors.size()) ? colors[i] : Vec4();
+        if(depthEnabled)
+        {
+            initDepthBuffer((int)img->width(), (int)img->height());
+            depthBuffer[positions[i].y][positions[i].x] = colors[i].z;
+        }  
         Vec2 tex = (i < texcoords.size()) ? texcoords[i] : Vec2();
         
         // Create vertex and push into the vertices vector
         Vertex vertex(pos, col, tex);
         vertices.push_back(vertex);
         std::cout << "initVertices " << pos.x <<" "<< pos.y <<" " << pos.z <<" " << pos.w <<" " << col.x <<" " << col.y <<" " << col.z <<" " << col.w <<" " << std::endl; // Debugging
+        
+    }
+}
+
+void initDepthBuffer(int width, int height) {
+    depthBuffer.resize(height, std::vector<float>(width, std::numeric_limits<float>::infinity()));
+}
+void clearDepthBuffer() {
+    for (auto& row : depthBuffer) {
+        std::fill(row.begin(), row.end(), std::numeric_limits<float>::infinity());
     }
 }
 
@@ -74,11 +90,6 @@ void parseFile(const std::string &filename)
         {
             depthEnabled = true;
             std::cout << "Depth buffer and tests enabled." << std::endl;
-            // Read indices
-            uint16_t index;
-            while (iss >> index) {
-                elements.push_back(index);
-            }
         } 
         else if (keyword == "sRGB") 
         {
@@ -145,7 +156,7 @@ void parseFile(const std::string &filename)
                 pos.x = ((pos.x / pos.w) + 1) * (width / 2.0f);
                 pos.y = ((pos.y / pos.w) + 1) * (height / 2.0f);
                 positions.push_back(pos);
-                std::cout << "t-pos: " << pos.x << " "<< pos.y<< " " << pos.z << " "<< pos.w<< std::endl; // Debugging
+                //std::cout << "t-pos: " << pos.x << " "<< pos.y<< " " << pos.z << " "<< pos.w<< std::endl; // Debugging
             }
             std::cout << "Position" << size << std::endl;    //Debugging
         } 
@@ -162,7 +173,7 @@ void parseFile(const std::string &filename)
                 if (size > 2) iss >> col.z;
                 if (size > 3) iss >> col.w;
                 colors.push_back(col);
-                std::cout << "col: " << col.x << " "<< col.y<< " " << col.z << " "<< col.w<< std::endl;  // Debugging
+                //std::cout << "col: " << col.x << " "<< col.y<< " " << col.z << " "<< col.w<< std::endl;  // Debugging
 
             }
         }
