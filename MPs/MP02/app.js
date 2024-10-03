@@ -6,19 +6,18 @@
 function initWebGL2(canvas) {
     const gl = canvas.getContext("webgl2");
     if (!gl) {
-        console.error("WebGL2 is not available.");
+        console.error("WebGL2 not available.");  // Debugging
         return null;
     }
-    console.log("WebGL2 context initialized.");
+    console.log("WebGL2 context initialized.");     // Debugging
     return gl;
 }
 
 /**
- * Compile the vertex and fragment shaders, then link them into a WebGL program.
- * It also extracts uniform locations and stores them in the program object.
- * @param {string} vs_source - The vertex shader source code.
- * @param {string} fs_source - The fragment shader source code.
- * @returns {WebGLProgram} - The compiled and linked WebGL program.
+ * Compile the vertex shader and fragment shader, then link them to the program.
+ * @param {string} vs_source - The vertex shader source
+ * @param {string} fs_source - The fragment shader source
+ * @returns {WebGLProgram} - The compiled and linked WebGL program
  */
 function compileShader(vs_source, fs_source) {
     const vs = gl.createShader(gl.VERTEX_SHADER);
@@ -60,9 +59,9 @@ function compileShader(vs_source, fs_source) {
 }
 
 /**
- * Setup the geometry based on the data loaded from the JSON file.
- * @param {Object} geom - The geometry data (positions, indices, attributes).
- * @returns {Object} - The VAO and necessary drawing information.
+ * Setup the geometry based on the JSON file.
+ * @param {Object} geom - The geometry data
+ * @returns {Object} - The VAO and drawing information
  */
 function setupGeometry(geom) {
     const vao = gl.createVertexArray();
@@ -112,10 +111,9 @@ function setupGeometry(geom) {
     const outlineColorArray = [];
     for (let i = 0; i < geom.position.length; i++) {
         outlineColorArray.push(...outlineColor);
-        console.log(outlineColor);  // Debugging
+        // console.log(outlineColor);  // Debugging
     }
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(outlineColorArray), gl.STATIC_DRAW);
-    // Enable color attribute at location 1 for outline
     gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(1);
 
@@ -138,10 +136,10 @@ function setupGeometry(geom) {
 
 
 /**
- * Compute the transformation matrix for animation using custom math functions.
- * @param {number} time - Current time in milliseconds.
- * @param {HTMLCanvasElement} canvas - The canvas element.
- * @returns {Float32Array} The transformation matrix.
+ * Compute the transformation matrix
+ * @param {number} time - time in milliseconds.
+ * @param {HTMLCanvasElement} canvas - The canvas
+ * @returns {Float32Array} Computed transformation matrix.
  */
 function computeMatrix(time, canvas) {
     time *= 0.001;  // Convert time to seconds
@@ -163,7 +161,7 @@ function computeMatrix(time, canvas) {
     return m4mul(translationMatrix, rotationMatrix, scaleMatrix);
 }
 
-/**
+/*
  * Draw the geometry with the given transformation.
  * @param {number} milliseconds - Time in milliseconds to compute transformations.
  */
