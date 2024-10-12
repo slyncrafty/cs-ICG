@@ -174,10 +174,11 @@ function draw(seconds) {
     // large octahedron
     // fixed at the origin
     // Spinning a full rotation / 2 sec
+    const sunScaleF = 2.0
     gl.bindVertexArray(octahedron.vao);
-    let sunRotation = m4rotY(seconds / 2);  // Full rotation every 2 seconds
-    let sunScale = m4scale(2.0, 2.0, 2.0);  // 
-    let sunModelView = m4mul(viewMatrix, m4mul(sunRotation,sunScale));  // Apply rotation
+    let sunScale = m4scale(sunScaleF, sunScaleF, sunScaleF);  
+    let sunSpinRotation = m4rotY(seconds * Math.PI);                         // Full rotation / 2 sec
+    let sunModelView = m4mul(viewMatrix, m4mul(sunSpinRotation, sunScale));  // Apply rotation at scale
     gl.uniformMatrix4fv(program.uniforms.mv, false, sunModelView);
     gl.drawElements(octahedron.mode, octahedron.count, octahedron.type, 0);
 
@@ -186,12 +187,15 @@ function draw(seconds) {
     // orbiting the Sun once every few sec
     // Spinning several times a sec
     const earthDist = 8;
-    const earthScal = 1;
+    const earthScaleF = sunScaleF/2;
+    const earthOrbitSpeed = seconds;
+    const earthSpinSpeed = earthOrbitSpeed * 2 * Math.PI;
     gl.bindVertexArray(octahedron.vao);
-    let earthOrbitRotation = m4rotY(seconds);  // Earth orbits the Sun
-    let earthTranslation = m4trans(earthDist, 0, 0);  // Earth's distance from the Sun
-    let earthSelfRotation = m4rotY(seconds * 3);  // Earth spins on its axis (faster than its orbit)
-    let earthModelView = m4mul(viewMatrix, m4mul(earthOrbitRotation, m4mul(earthTranslation, earthSelfRotation)));
+    let earthScale = m4scale(earthScaleF, earthScaleF, earthScaleF);    // Earth Scale
+    let earthSpinRotation = m4rotY(earthSpinSpeed);                     // Earth spins 2 times / sec
+    let earthTranslation = m4trans(earthDist, 0, 0);                    // Earth's distance from the Sun
+    let earthOrbitRotation = m4rotY(earthOrbitSpeed);                   // Earth orbits Sun at origin
+    let earthModelView = m4mul(viewMatrix, m4mul(earthOrbitRotation, m4mul(earthTranslation, earthSpinRotation, earthScale)));
     gl.uniformMatrix4fv(program.uniforms.mv, false, earthModelView);
     gl.drawElements(octahedron.mode, octahedron.count, octahedron.type, 0);
 
@@ -200,48 +204,62 @@ function draw(seconds) {
     // 1.6 times as far from the Sun as the Earth
     // Orbitting the Sun 1.9 times slower than the Earth
     // spinning like a top 2.2 times slower than the Earth
+    const marsScaleF = earthScaleF * 0.8;                         // Mars smaller than Earth
+    const marsSpinSpeed = earthSpinSpeed / 2.2;          
     gl.bindVertexArray(octahedron.vao);
-    let marsOrbitRotation = m4rotY(seconds / 1.9);  // Mars orbits slower than Earth
-    let marsTranslation = m4trans(1.6*earthDist, 0, 0);  // 1.6 times farther than Earth
-    let marsSelfRotation = m4rotY(seconds / 2.2);  // Mars spins slower than Earth
-    let marsScale = m4scale(0.8, 0.8, 0.8); 
-    let marsModelView = m4mul(viewMatrix, m4mul(marsOrbitRotation, m4mul(marsTranslation, m4mul(marsSelfRotation,marsScale))));
+    let marsScale = m4scale(marsScaleF, marsScaleF, marsScaleF); 
+    let marsSpinRotation = m4rotY(marsSpinSpeed);                // Mars spins slower than Earth
+    let marsTranslation = m4trans(1.6*earthDist, 0, 0);          // Mars 1.6 times farther than Earth
+    let marsOrbitRotation = m4rotY(earthOrbitSpeed / 1.9);       // Mars orbits slower than Earth
+    let marsModelView = m4mul(viewMatrix, m4mul(marsOrbitRotation, m4mul(marsTranslation, marsSpinRotation, marsScale)));
     gl.uniformMatrix4fv(program.uniforms.mv, false, marsModelView);
     gl.drawElements(octahedron.mode, octahedron.count, octahedron.type, 0);
 
     // 4. The Moon 
     // tetrahedron 
-    // orbits Earth 
+    // smaller than the Earth
+    // orbiting the Earth faster than the Earth orbits the Sun but slower than the Earth spins
     // always presenting the same side of itself to the Earth
+    const moonScaleF = earthScaleF * 0.3
+    const moonOrbitSpeed = earthOrbitSpeed * 1.5 
     gl.bindVertexArray(tetrahedron.vao);
-    let moonOrbitRotation = m4rotY(seconds * 2);  // Moon orbits Earth
-    let moonTranslation = m4trans(2, 0, 0);  // Distance from Earth
-    let moonScale = m4scale(0.3, 0.3, 0.3); 
-    let moonModelView = m4mul(earthModelView, m4mul(moonOrbitRotation, m4mul(moonTranslation, moonScale)));
+    let moonScale = m4scale(moonScaleF, moonScaleF, moonScaleF); 
+    let moonSpinRotation = m4rotY(moonOrbitSpeed);              // Moon spins same speed as it orbits
+    let moonTranslation = m4trans(2, 0, 0);                     // Distance from Earth
+    let moonOrbitRotation = m4rotY(moonOrbitSpeed);             // Moon orbits Earth faster
+    let moonModelView = m4mul(earthModelView, m4mul(moonOrbitRotation, m4mul(moonTranslation, moonSpinRotation, moonScale)));
     gl.uniformMatrix4fv(program.uniforms.mv, false, moonModelView);  
     gl.drawElements(tetrahedron.mode, tetrahedron.count, tetrahedron.type, 0);
 
     // 5. Phobos
     // tetrahedron
+    // smaller than Mars
     // orbiting Mars several times faster than Mars spins
     // always presenting the same side of itself to Mars
+    const phobosOrbitSpeed = marsSpinSpeed * 3;
+    const phobosDist = 1.5;
+    const phobosScaleF = marsScaleF * 0.6;
     gl.bindVertexArray(tetrahedron.vao);
-    let phobosOrbitRotation = m4rotY(seconds * 6);  // Phobos orbits Mars faster
-    let phobosTranslation = m4trans(1.5, 0, 0);  // Distance from Mars
-    let phobosScale = m4scale(0.6, 0.6, 0.6)
-    let phobosModelView = m4mul(marsModelView, m4mul(phobosOrbitRotation, m4mul(phobosTranslation, phobosScale)));
-    gl.uniformMatrix4fv(program.uniforms.mv, false, phobosModelView);  // No self-rotation
+    let phobosScale = m4scale(phobosScaleF, phobosScaleF, phobosScaleF); 
+    let phobosSpinRotation = m4rotY(phobosOrbitSpeed);           // Phobos spins same speed as it orbits                 
+    let phobosTranslation = m4trans(phobosDist, 0, 0);           // Distance from Mars
+    let phobosOrbitRotation = m4rotY(phobosOrbitSpeed);          // Phobos orbits Mars faster
+    let phobosModelView = m4mul(marsModelView, m4mul(phobosOrbitRotation, m4mul(phobosTranslation, phobosSpinRotation, phobosScale)));
+    gl.uniformMatrix4fv(program.uniforms.mv, false, phobosModelView);  
     gl.drawElements(tetrahedron.mode, tetrahedron.count, tetrahedron.type, 0);
 
     // 6. Deimos
     // tetrahedron, half the size of Phobos
     // orbiting Mars only a little faster than Mars spins
     // always presenting the same side of itself to Mars
+    const deimosScaleF = phobosScaleF * 0.5;
+    const deimosOrbitSpeed = marsSpinSpeed * 1.3;
     gl.bindVertexArray(tetrahedron.vao);
-    let deimosOrbitRotation = m4rotY(seconds * 3);  // Deimos orbits Mars slower than Phobos
-    let deimosTranslation = m4trans(3, 0, 0);  // Twice as far as Phobos from Mars
-    let deimosScale = m4scale(0.3, 0.3, 0.3)
-    let deimosModelView = m4mul(marsModelView, m4mul(deimosOrbitRotation, m4mul(deimosTranslation,deimosScale)));
+    let deimosScale = m4scale(deimosScaleF, deimosScaleF, deimosScaleF);
+    let deimosSpinRotation = m4rotY(deimosOrbitSpeed);           // Deimos spins same speed as it orbits
+    let deimosTranslation = m4trans(phobosDist*2, 0, 0);         // Twice as far as Phobos from Mars
+    let deimosOrbitRotation = m4rotY(deimosOrbitSpeed);       // Deimos orbits Mars faster
+    let deimosModelView = m4mul(marsModelView, m4mul(deimosOrbitRotation, m4mul(deimosTranslation, deimosSpinRotation, deimosScale)));
     gl.uniformMatrix4fv(program.uniforms.mv, false, deimosModelView);  // No self-rotation
     gl.drawElements(tetrahedron.mode, tetrahedron.count, tetrahedron.type, 0);
 
@@ -268,7 +286,10 @@ function fillScreen() {
     canvas.style.height = ''
     if (window.gl) {
         gl.viewport(0,0, canvas.width, canvas.height)
-        window.p = m4perspNegZ(0.1, 50, 1.5, canvas.width, canvas.height)
+        const fieldOfView = Math.PI/3;  
+        const near = 0.1;  
+        const far = 100.0;    
+        window.p = m4perspNegZ(near,far, fieldOfView, canvas.width, canvas.height);
     }
 }
 
@@ -315,17 +336,16 @@ window.addEventListener('load', async (event) => {
     window.octahedron = setupGeometry(octahedronData); 
 
     const aspectRatio = canvas.width / canvas.height;
-    const fieldOfView = Math.PI / 3;  
-    const near = 0.1;  
-    const far = 100.0;    
-    const projectionMatrix = m4perspNegZ(near,far, 1.5, canvas.width, canvas.height);
-
+    
     window.geom2 = setupGeometry(makeGeom())
     fillScreen()
     window.addEventListener('resize', fillScreen)
     requestAnimationFrame(tick)
 })
-    
+
+/**
+ * Canvas resizing
+ */
 window.addEventListener('resize', () => {
         const canvas = document.querySelector('canvas');
         canvas.width = window.innerWidth;
