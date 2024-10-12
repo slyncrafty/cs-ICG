@@ -153,12 +153,15 @@ function computeMatrix(time, canvas) {
     const angle = time/2;  // Rotate based on time
     const rotationMatrix = m4rotZ(angle);
 
+    // aspect ratio correction - to be applied before any other transformation
+    const aspectRatio = canvas.width / canvas.height;
+    const aspectMatrix = m4scale(1 / aspectRatio, 1, 1);
     // Uniform scaling
     const scale = Math.sin(time) * 0.3 + 0.7;  // Scale between 0.5 and 1.0
     const scaleMatrix = m4scale(scale, scale, scale);
 
     // Translation * Rotation * Scaling
-    return m4mul(translationMatrix, rotationMatrix, scaleMatrix);
+    return m4mul(aspectMatrix, translationMatrix, rotationMatrix, scaleMatrix);
 }
 
 /*
