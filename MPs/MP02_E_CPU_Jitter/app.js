@@ -138,13 +138,13 @@ function setupGeometry(geom) {
  * Compute the jitter 
  */
 function computeJitter(){
-    const jitterConst = -0.01;  // Use a small jitter amount to see more noticeable changes
+    const jitterConst = -0.01; 
 
     for (let i = 0; i < jitteredPositions.length; i++) {
         // Adding jitter while ensuring that positions stay in a reasonable range
         jitteredPositions[i] += (Math.random() - 0.5) * jitterConst;
     }
-    console.log("Jitter!: ", jitteredPositions); // Debugging
+    //console.log("Jitter!: ", jitteredPositions); // Debugging
 }
 
 // /**
@@ -189,11 +189,10 @@ function draw(milliseconds) {
     computeJitter();
     gl.bindVertexArray(geom.vao);
 
-    console.log('Jittered Positions to draw:', jitteredPositions);   // Debugging
+    //console.log('Jittered Positions to draw:', jitteredPositions);   // Debugging
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, jitteredPositions);
-    //gl.bufferData(gl.ARRAY_BUFFER, jitteredPositions, gl.DYNAMIC_DRAW); // Updated data
-    console.log(jitteredPositions); // Debugging
+    gl.bufferData(gl.ARRAY_BUFFER, jitteredPositions, gl.DYNAMIC_DRAW); // Updated data
+    //console.log(jitteredPositions); // Debugging
 
     gl.drawElements(geom.mode, geom.count, gl.UNSIGNED_SHORT, 0);
 
