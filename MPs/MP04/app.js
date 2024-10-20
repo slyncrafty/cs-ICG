@@ -31,8 +31,11 @@ window.addEventListener('resize', () => {
 
 /**
  * Setup geometry
- * @param geomData
- * @returns {object} - VAO 
+ * @returns an object with four keys:
+ *  - mode = the 1st argument for gl.drawElements
+ *  - count = the 2nd argument for gl.drawElements
+ *  - type = the 3rd argument for gl.drawElements
+ *  - vao = the vertex array object for use with gl.bindVertexArray
  */
 function setupGeometry(geomData) {
     const vao = gl.createVertexArray();
@@ -93,10 +96,11 @@ function createTriGrid(gridsize) {
     return indices;
 }
 
+
 // Displace the vertices in the grid with faults
 function applyFaults(vertices, gridsize, faults) {
     for (let i = 0; i < faults; i++) {
-        // random p fault center
+        // random p fault plane center
         const p = [Math.random() * 2 - 1, Math.random() * 2 - 1];
         const theta = Math.random() * 2 * Math.PI;
         const n = [Math.cos(theta), Math.sin(theta), 0];
@@ -104,40 +108,77 @@ function applyFaults(vertices, gridsize, faults) {
         for (let j = 0; j < vertices.length; j++) {
             // Get the 2d position of the vertex
             const b = [vertices[j][0], vertices[j][2]];
-            const vMinusP = sub(b, p);              // Vector from fault center to vertex
-            const distanceFromFault = mag(vMinusP); // Distance from the fault center
+            const bP = sub(b, p);              // Vector from fault center to vertex
+            const dotProduct = dot(bP, n);
 
             // Only displace vertices that are within a certain distance from the fault center
-            const maxEffectRadius = gridsize / 2;    // adjust 
-            if (distanceFromFault < maxEffectRadius) {
-                const dotProduct = dot(vMinusP, n); // Projection of vertex onto fault direction
-                const displacement = g(distanceFromFault, maxEffectRadius); 
-
-                // displacement 
-                if (dotProduct >= 0) {
-                    vertices[j][1] += displacement;
-                } else {
-                    vertices[j][1] -= displacement;
-                }
+            const R = gridsize / 10;    // adjust 
+            const displacement = g(dotProduct, R); 
+            // displacement 
+            if (dotProduct >= 0) {
+                vertices[j][1] += displacement;
+            } else {
+                vertices[j][1] -= displacement;
             }
+            
         }
     }
     normalizeHeights(vertices);
 }
 
-// Coefficient function for distance-weighted displacement
-// Smooth displacement function
+/**
+ * Smooth displacement function(distance-weighted displacement)
+ * @param {*} r : dot product distance
+ * @param {*} R : Radius of effect (scale for displacement)
+ * @returns Quartic smooth step function
+ */
 function g(r, R) {
     return r < R ? Math.pow(1 - (r / R) ** 2, 2) * 0.05 : 0;
 }
 
-/**
- * 
- * height′=c(height− 1/2(max+min)) / (max−min)​, c: constant, highest peak heigt
- * @param {*} vertices 
- */
-// Normalize heights
+// // Displace the vertices in the grid with faults
+// function applyFaults(vertices, gridsize, faults) {
+//     for (let i = 0; i < faults; i++) {
+//         // random p fault center
+//         const p = [Math.random() * 2 - 1, Math.random() * 2 - 1];
+//         const theta = Math.random() * 2 * Math.PI;
+//         const n = [Math.cos(theta), Math.sin(theta), 0];
 
+//         for (let j = 0; j < vertices.length; j++) {
+//             // Get the 2d position of the vertex
+//             const b = [vertices[j][0], vertices[j][2]];
+//             const bP = sub(b, p);              // Vector from fault center to vertex
+//             const distanceFromFault = mag(bP); // Distance from the fault center
+
+//             // Only displace vertices that are within a certain distance from the fault center
+//             const maxEffectRadius = gridsize / 2;    // adjust 
+//             if (distanceFromFault < maxEffectRadius) {
+//                 const dotProduct = dot(bP, n); // Projection of vertex onto fault direction
+//                 const displacement = g(distanceFromFault, maxEffectRadius); 
+
+//                 // displacement 
+//                 if (dotProduct >= 0) {
+//                     vertices[j][1] += displacement;
+//                 } else {
+//                     vertices[j][1] -= displacement;
+//                 }
+//             }
+//         }
+//     }
+//     normalizeHeights(vertices);
+// }
+
+// // Coefficient function for distance-weighted displacement
+// // Smooth displacement function
+// function g(r, R) {
+//     return r < R ? Math.pow(1 - (r / R) ** 2, 2) * 0.05 : 0;
+// }
+
+/**
+ * Normalize heights
+ * height′=c(height− 1/2(max+min)) / (max−min)​, c: constant, highest peak heigt
+ * @param {*} vertices
+ */
 function normalizeHeights(vertices) {
     let min = Infinity, max = -Infinity;
     for (let i = 0; i < vertices.length; i ++) {
@@ -151,7 +192,11 @@ function normalizeHeights(vertices) {
     }
 }
 
-// Compute normals and add to geom
+/**
+ * Compute normals and add to geom
+ * 
+ * @param {*} vertices
+ */
 function addNormals(positions, gridsize) {
     const normals = [];
 
@@ -245,6 +290,8 @@ function generateTerrain(gridsize, faults) {
     };
     window.terrain = setupGeometry(geomData);
     requestAnimationFrame(tick); // Start the animation loop
+    console.log("Vertices: ", vertices.length, " ", gridsize*gridsize);     // Debugging
+    console.log("Indices: ", indices.length, " " , ((gridsize-1)*(gridsize-1)*2))       // Debugging
 }
 
 
@@ -262,7 +309,6 @@ function draw(seconds) {
     time = seconds;
     const angle = time * 0.2;
     const eyePos = [3, 3, 1];  
-    gl.uniform3fv(program.uniforms.eyePos, eyePos);
     const viewMatrix = m4mul(m4view(eyePos, [0, 0, 0], [0, 1, 0]), m4rotY(angle));
     const modelMatrix = IdentityMatrix;
     // Camera position in world coordinates
@@ -329,7 +375,6 @@ window.addEventListener('load', async (event) => {
         console.log("gridsize: " + gridsize + " : faults: " + faults);  // Debugging
         generateTerrain(gridsize, faults);
     }); 
-    // Start the animation loop immediately
-    // requestAnimationFrame(tick);    // asks browser to call tick before next frame
+
 })
 
