@@ -97,7 +97,10 @@ function createTriGrid(gridsize) {
 }
 
 
-// Displace the vertices in the grid with faults
+/**
+ * Displace the vertices in the grid with faults
+ * displacement determined based on the distance from random fault plane
+ */
 function applyFaults(vertices, gridsize, faults) {
     for (let i = 0; i < faults; i++) {
         // random p fault plane center
@@ -113,7 +116,7 @@ function applyFaults(vertices, gridsize, faults) {
 
             // Only displace vertices that are within a certain distance from the fault center
             const R = gridsize / 10;    // adjust 
-            const displacement = g(dotProduct, R); 
+            const displacement = g(Math.abs(dotProduct), R); 
             // displacement 
             if (dotProduct >= 0) {
                 vertices[j][1] += displacement;
@@ -136,47 +139,9 @@ function g(r, R) {
     return r < R ? Math.pow(1 - (r / R) ** 2, 2) * 0.05 : 0;
 }
 
-// // Displace the vertices in the grid with faults
-// function applyFaults(vertices, gridsize, faults) {
-//     for (let i = 0; i < faults; i++) {
-//         // random p fault center
-//         const p = [Math.random() * 2 - 1, Math.random() * 2 - 1];
-//         const theta = Math.random() * 2 * Math.PI;
-//         const n = [Math.cos(theta), Math.sin(theta), 0];
-
-//         for (let j = 0; j < vertices.length; j++) {
-//             // Get the 2d position of the vertex
-//             const b = [vertices[j][0], vertices[j][2]];
-//             const bP = sub(b, p);              // Vector from fault center to vertex
-//             const distanceFromFault = mag(bP); // Distance from the fault center
-
-//             // Only displace vertices that are within a certain distance from the fault center
-//             const maxEffectRadius = gridsize / 2;    // adjust 
-//             if (distanceFromFault < maxEffectRadius) {
-//                 const dotProduct = dot(bP, n); // Projection of vertex onto fault direction
-//                 const displacement = g(distanceFromFault, maxEffectRadius); 
-
-//                 // displacement 
-//                 if (dotProduct >= 0) {
-//                     vertices[j][1] += displacement;
-//                 } else {
-//                     vertices[j][1] -= displacement;
-//                 }
-//             }
-//         }
-//     }
-//     normalizeHeights(vertices);
-// }
-
-// // Coefficient function for distance-weighted displacement
-// // Smooth displacement function
-// function g(r, R) {
-//     return r < R ? Math.pow(1 - (r / R) ** 2, 2) * 0.05 : 0;
-// }
-
 /**
- * Normalize heights
- * height′=c(height− 1/2(max+min)) / (max−min)​, c: constant, highest peak heigt
+ * Normalize heights rescale the displacement heights
+ * height′=c(height− 1/2(max+min)) / (max−min)​, c: constant, highest peak height
  * @param {*} vertices
  */
 function normalizeHeights(vertices) {
@@ -193,9 +158,9 @@ function normalizeHeights(vertices) {
 }
 
 /**
- * Compute normals and add to geom
- * 
- * @param {*} vertices
+ * Compute normals and add to geomdata
+ * @param {*} positions
+ * @param {*} gridsize 
  */
 function addNormals(positions, gridsize) {
     const normals = [];
@@ -248,28 +213,6 @@ function addNormals(positions, gridsize) {
     return normals;
 }
 
-// function addNormals(geom) {
-//     let ni = geom.attributes.length
-//     geom.attributes.push([])
-//     for(let i = 0; i < geom.attributes[0].length; i+=1) {
-//         geom.attributes[ni].push([0,0,0])
-//     }
-//     for(let i = 0; i < geom.triangles.length; i+=1) {
-//         let p0 = geom.attributes[0][geom.triangles[i][0]]
-//         let p1 = geom.attributes[0][geom.triangles[i][1]]
-//         let p2 = geom.attributes[0][geom.triangles[i][2]]
-//         let e1 = sub(p1,p0)
-//         let e2 = sub(p2,p0)
-//         let n = cross(e1,e2)
-//         geom.attributes[ni][geom.triangles[i][0]] = add(geom.attributes[ni][geom.triangles[i][0]], n)
-//         geom.attributes[ni][geom.triangles[i][1]] = add(geom.attributes[ni][geom.triangles[i][1]], n)
-//         geom.attributes[ni][geom.triangles[i][2]] = add(geom.attributes[ni][geom.triangles[i][2]], n)
-//     }
-//     for(let i = 0; i < geom.attributes[0].length; i+=1) {
-//         geom.attributes[ni][i] = normalize(geom.attributes[ni][i])
-//     }
-// }
-
 
 // Function to generate terrain vertices and normals
 function generateTerrain(gridsize, faults) {
@@ -289,7 +232,10 @@ function generateTerrain(gridsize, faults) {
         triangles: indices,
     };
     window.terrain = setupGeometry(geomData);
-    requestAnimationFrame(tick); // Start the animation loop
+    if (!window.animationStarted) {
+        requestAnimationFrame(tick);  // Start the rendering loop once
+        window.animationStarted = true; // Set a flag to prevent multiple calls
+    }
     console.log("Vertices: ", vertices.length, " ", gridsize*gridsize);     // Debugging
     console.log("Indices: ", indices.length, " " , ((gridsize-1)*(gridsize-1)*2))       // Debugging
 }
@@ -305,7 +251,7 @@ function draw(seconds) {
     gl.useProgram(program);
 
     gl.bindVertexArray(terrain.vao);
-
+ 
     time = seconds;
     const angle = time * 0.2;
     const eyePos = [3, 3, 1];  
@@ -314,11 +260,14 @@ function draw(seconds) {
     // Camera position in world coordinates
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(viewMatrix, modelMatrix));
     gl.uniformMatrix4fv(program.uniforms.p, false, window.p);
-    
+
     // Set up the light source
-    const lightdir = normalize([1, 2, 1]); 
+    const lightdir = normalize([1, 1, 1]); 
+    //const lightdir = normalize([0, 1, 0]);    // Debugging
+    const h = normalize(add(lightdir, [0,0,1]));
     gl.uniform3fv(program.uniforms.lightdir, lightdir);
     gl.uniform3fv(program.uniforms.lightcolor, [1, 1, 1]);
+    gl.uniform3fv(program.uniforms.H, h);
     const diffuseColor = [196/255, 189/255, 139/255];      // Earth tone
     gl.uniform3fv(program.uniforms.diffuseColor, diffuseColor);
     const specularColor = [1.0, 1.0, 1.0];             
