@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Parametric Geometry - Sphere and Torus</title>
+        <script src="app.js"></script>
+        <script src="utils.js"></script>
+        <script src="math.js"></script>
+        <link rel="icon" href="data:,">
+
+    </head>
+    <body>
+        <form class="controls" action="javascript:void(0);">
+            <label>Number of slices: <input id="num_slices"  type="number" value="5" min ="3"></label>
+            <label>Number of rings:<input id="num_rings"  type="number" value="5" min ="1"></label>
+            <label>Torus: <input id="torus" type="checkbox"></label>
+            <label>Wireframes: <input id="wire" type="checkbox"></label>
+            <input id="submit" type="submit" value="Generate Geometry">
+        </form>
+        <div class="display">
+            <canvas width="300" height="300"></canvas>
+        </div>
+    </body>
+</html>
