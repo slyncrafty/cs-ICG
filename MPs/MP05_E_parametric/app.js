@@ -285,26 +285,26 @@ function draw(seconds) {
     time = seconds;
     const angle = time * 0.2;
     const eyePos = [3, 3, 1];  
-    const viewMatrix = m4mul(m4view(eyePos, [0, 0, 0], [0, 1, 0]), m4rotY(angle));
+    const viewMatrix = m4mul(m4view(eyePos, [0, 0, 0], [0, 1, 0]), m4rotY(-angle));
     const modelMatrix = IdentityMatrix;
     // Camera position in world coordinates
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(viewMatrix, modelMatrix));
     gl.uniformMatrix4fv(program.uniforms.p, false, window.p);
 
     // Set up the light source
-    const lightdir = normalize([1, 2, 1]);
-    const h = normalize(add(lightdir, [0,0,1])); 
+    const lightdir = normalize([1, 1, 1]);
     gl.uniform3fv(program.uniforms.lightdir, lightdir);
     gl.uniform3fv(program.uniforms.lightcolor, [1, 1, 1]);
-    gl.uniform3fv(program.uniforms.H, h)
+    // const h = normalize(add(lightdir , [0,0,1]));
+    // gl.uniform3fv(program.uniforms.H, h);
 
-    // const lightdir2 = normalize([0, -3, 3])
-    // const h2 = normalize(add(lightdir2, [0,0,1])); 
-    // gl.uniform3fv(program.uniforms.lightdir2, lightdir2)
-    // gl.uniform3fv(program.uniforms.lightcolor2, [1, 1, 1])
-    // gl.uniform3fv(program.uniforms.H2, h2)
+    const lightdir2 = normalize([-2, -2, 1]);
+    gl.uniform3fv(program.uniforms.lightdir2, lightdir2);
+    gl.uniform3fv(program.uniforms.lightcolor2, [0.5, 0.0, 0.5]);
+    // const h2 = normalize(add(lightdir2 , [0,0,1]));
+    // gl.uniform3fv(program.uniforms.H2, h2);
 
-    const diffuseColor = [0.5, 0.5, 0.5] // [196/255, 189/255, 139/255];      // Earth tone
+    const diffuseColor = [1.0, 1.0, 1.0];
     gl.uniform3fv(program.uniforms.diffuseColor, diffuseColor);
     const specularColor = [1.0, 1.0, 1.0];             
     gl.uniform3fv(program.uniforms.specularColor, specularColor);
@@ -367,9 +367,9 @@ window.addEventListener('load', async (event) => {
         window.wireCheckbox = document.querySelector('#wire').checked;
         window.num_slices = Number(document.querySelector('#num_slices').value);
         window.num_rings = Number(document.querySelector('#num_rings').value);
-        console.log("Number of Slices: " + num_slices + " , Number of Rings: " + num_rings + " , torus: " + checkbox);  // Debugging
+        //console.log("Number of Slices: " + num_slices + " , Number of Rings: " + num_rings + " , torus: " + checkbox);  // Debugging
         generateGeometry(num_slices, num_rings, checkbox);
-        console.log("Number of vertices: " + geomData.attributes[0].length + " :: " + num_slices*num_rings + " || Number of triangles: " + geomData.triangles.length / 3 + " :: " + 2*num_slices*num_rings);
+        console.log("Number of vertices: " + geomData.attributes[0].length + " :: " + num_slices*num_rings + " || Number of triangles: " + geomData.triangles.length / 3 + " :: " + 2*num_slices*num_rings);  // Debugging
 
     }); 
 

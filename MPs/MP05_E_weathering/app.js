@@ -215,12 +215,15 @@ function addNormals(positions, gridsize) {
 
 
 // Function to generate terrain vertices and normals
-function generateTerrain(gridsize, faults) {
+function generateTerrain(gridsize, faults, smoothing) {
     console.log("Generating Terrain...");
     const vertices = createGrid(gridsize);
     const indices = createTriGrid(gridsize);
     if (faults > 0) {
         applyFaults(vertices, gridsize, faults);
+    }
+    if (smoothing > 0) {
+        applySmoothing(vertices, gridsize, smoothing);
     }
     //console.log(Object.keys(geomData.attributes));    // Debugging
     const normals = addNormals(vertices, gridsize);
@@ -240,6 +243,53 @@ function generateTerrain(gridsize, faults) {
     console.log("Indices: ", indices.length, " " , ((gridsize-1)*(gridsize-1)*2))       // Debugging
 }
 
+/**
+ * Apply smoothing (Spheroidal weathering) by replacing each vertex's position 
+ * with the avg of its current position and its neighbors positions
+ * repeats the operation `smoothing` number of times. (p+m)/n 
+ * @param {*} vertices - vertex positions
+ * @param {*} gridsize - size of grid
+ * @param {*} smoothing - number of iterations for smoothing
+ */
+function applySmoothing(vertices, gridsize, smoothing){
+    const neighbor = [-1, 1, -gridsize, gridsize,  -gridsize - 1, -gridsize + 1, gridsize - 1, gridsize + 1] // neighbor indices
+    /*
+    -g-1    -g      -g+1
+    -1      0       +1
+    g-1     g       g+1
+    */
+    for(let it = 0; it < smoothing; it++)
+    {
+        const newP = vertices.map(v => v[1]);
+        for (let i = 0; i < vertices.length; i++) {
+            const p =  vertices[i][1];
+            let neighborSum = 0; 
+            let neighborCount = 0;
+            const row = Math.floor(i / gridsize);
+            const col = i % gridsize;
+            for (let offset of neighbor) {
+                const idx = i + offset;
+                const neighborRow = Math.floor(idx / gridsize);
+                const neighborCol = idx % gridsize;
+                // Check bounds
+                if (idx >= 0 && idx < vertices.length &&
+                    Math.abs(neighborRow - row) <= 1 && Math.abs(neighborCol - col) <= 1) 
+                {
+                    neighborSum += vertices[idx][1];
+                    neighborCount++;
+                }
+            }
+            const m = neighborSum / neighborCount;
+            newP[i] = (p + m) / 2;
+        }
+
+        // Update heights
+        for (let i = 0; i < vertices.length; i++) {
+            vertices[i][1] = newP[i];
+        }
+    }
+}
+
 /*
  * Draw the geometry with the given transformation.
  * @param {number} milliseconds - Time in milliseconds to compute transformations.
@@ -250,27 +300,26 @@ function draw(seconds) {
     gl.useProgram(program);
 
     gl.bindVertexArray(terrain.vao);
-
+ 
     time = seconds;
     const angle = time * 0.2;
     const eyePos = [3, 3, 1];  
     const viewMatrix = m4mul(m4view(eyePos, [0, 0, 0], [0, 1, 0]), m4rotY(angle));
     const modelMatrix = IdentityMatrix;
-    gl.uniformMatrix4fv(program.uniforms.model, false, modelMatrix);
     // Camera position in world coordinates
-    //computeCamera();
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(viewMatrix, modelMatrix));
+    gl.uniformMatrix4fv(program.uniforms.m, false, modelMatrix);
     gl.uniformMatrix4fv(program.uniforms.p, false, window.p);
 
-
-    // Set globalUp the light source
-    const lightdir = normalize([2, 3, 1]);
-    //const h = normalize(add(lightdir, [0,0,1]));
-    //gl.uniform3fv(program.uniforms.H, h)
+    // Set up the light source
+    const lightdir = normalize([1, 2, 1]);
+    //const lightdir = normalize([0, 1, 0]);    // Debugging
+    const h = normalize(add(lightdir, [0,0,1]));
     gl.uniform3fv(program.uniforms.lightdir, lightdir);
     gl.uniform3fv(program.uniforms.lightcolor, [1, 1, 1]);
-    //const diffuseColor = [196/255, 189/255, 139/255];      // Earth tone
-    //gl.uniform3fv(program.uniforms.diffuseColor, diffuseColor);
+    gl.uniform3fv(program.uniforms.H, h);
+    const diffuseColor = [196/255, 189/255, 139/255];      // Earth tone
+    gl.uniform3fv(program.uniforms.diffuseColor, diffuseColor);
     const specularColor = [1.0, 1.0, 1.0];             
     gl.uniform3fv(program.uniforms.specularColor, specularColor);
 
@@ -290,7 +339,7 @@ function tick(milliseconds) {
 }
 
 /** 
- * Compile, link, set globalUp geometry
+ * Compile, link, set up geometry
  * async functions return a Promise instead of their actual result.
  * Because of that, they can `await` for other Promises to be fulfilled,
  * which makes functions that call `fetch` or other async functions cleaner.
@@ -300,7 +349,7 @@ window.addEventListener('load', async (event) => {
     window.gl = initWebGL2(canvas);
     if (!gl) return;
 
-    // Set globalUp WebGL viewport and clear the screen
+    // Set up WebGL viewport and clear the screen
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0.8, 0.8, 0.8, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -322,8 +371,10 @@ window.addEventListener('load', async (event) => {
     document.querySelector('#submit').addEventListener('click', event => {
         window.gridsize = Number(document.querySelector('#gridsize').value) || 2;
         window.faults = Number(document.querySelector('#faults').value) || 0;
-        console.log("gridsize: " + gridsize + " : faults: " + faults);  // Debugging
-        generateTerrain(gridsize, faults);
+        window.smoothing = Number(document.querySelector('#smoothing').value) || 0;
+        console.log("gridsize: " + gridsize + " : faults: " + faults + " : Weathering: " + smoothing);  // Debugging
+        generateTerrain(gridsize, faults, smoothing);
     }); 
 
 })
+
