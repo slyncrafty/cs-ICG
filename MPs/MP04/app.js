@@ -259,10 +259,11 @@ function draw(seconds) {
     const modelMatrix = IdentityMatrix;
     // Camera position in world coordinates
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(viewMatrix, modelMatrix));
+    gl.uniformMatrix4fv(program.uniforms.m, false, modelMatrix);
     gl.uniformMatrix4fv(program.uniforms.p, false, window.p);
 
     // Set up the light source
-    const lightdir = normalize([1, 1, 1]); 
+    const lightdir = normalize([1, 1, 10]);
     //const lightdir = normalize([0, 1, 0]);    // Debugging
     const h = normalize(add(lightdir, [0,0,1]));
     gl.uniform3fv(program.uniforms.lightdir, lightdir);
