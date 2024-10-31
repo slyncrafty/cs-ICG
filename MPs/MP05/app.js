@@ -257,17 +257,18 @@ function draw(seconds) {
     // gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(viewMatrix, modelMatrix));
     // gl.uniformMatrix4fv(program.uniforms.p, false, window.p);
     computeCamera();
+    //    const viewMatrix = m4view(eyePos, add([0,0,0], forward), globalUp);
     const viewMatrix = m4view(eyePos, add(eyePos, forward), globalUp);
     const modelMatrix = IdentityMatrix;
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(viewMatrix, modelMatrix));
     gl.uniformMatrix4fv(program.uniforms.p, false, window.p);
 
     // Set globalUp the light source
-    const lightdir = normalize([1, 2, 1]);
+    const lightdir = normalize([1, 1, 1]);
     const h = normalize(add(lightdir, [0,0,1])); 
     gl.uniform3fv(program.uniforms.lightdir, lightdir);
     gl.uniform3fv(program.uniforms.lightcolor, [1, 1, 1]);
-    gl.uniform3fv(program.uniforms.H, h);
+    //gl.uniform3fv(program.uniforms.H, h);
     const diffuseColor = [196/255, 189/255, 139/255];      // Earth tone
     gl.uniform3fv(program.uniforms.diffuseColor, diffuseColor);
     const specularColor = [1.0, 1.0, 1.0];             
@@ -332,7 +333,7 @@ window.addEventListener('load', async (event) => {
 
 
 // Global Variables
-let eyePos = [0, 1, 3];
+let eyePos = [1, 2, 5];
 let forward = [0, 0, -1];
 const globalUp =[0, 1, 0];
 window.keysBeingPressed = {};
