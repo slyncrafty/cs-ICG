@@ -18,15 +18,14 @@ void main() {
     vec3 H = normalize(L + V);
 
     // Diffuse shading
-    float diff = max(dot(N, L), 0.0);
+    float diff = max(dot(N, L), 0.0) * (1.0 - u_color.a);  // Scaled by (1 - alpha)
     vec3 diffuse = diff * u_color.rgb * lightcolor;
 
     // Specular shading
-    float spec = pow(max(dot(N, H), 0.0), 80.0);
-    float shine = 0.8;
+    float spec = pow(max(dot(N, H), 0.0), 80.0)*(3.0 * u_color.a); // mul by alpha * 3
     vec3 specular = spec * specularColor * lightcolor;
 
-    fragColor = vec4(0.05 + diffuse + specular * shine, 1.0);
+    fragColor = vec4(0.05 + diffuse + specular, 1.0);
 }
 
 /*

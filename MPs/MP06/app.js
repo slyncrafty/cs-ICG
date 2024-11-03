@@ -5,7 +5,7 @@ const IdentityMatrix = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
 let colorProgram, textureProgram;
 let textureMode = false;
 let texture = null;
-let inColor = [0.8,0.8,0.9,1.0]; 
+let inColor = [1,1,1,0.3]; 
 
 let eyePos = [3, 3, 1];
 let forward = [0, 0, -1];
@@ -364,7 +364,7 @@ function processTexture(){
     console.log("input color or texture detected: ", inValue);
     if (inValue === '') {
         textureMode = false;
-        inColor = [0.8,0.8,0.9,1.0]; 
+        inColor = [1,1,1,0.3]; 
         console.log("No color input");
     } else if (/^#[0-9a-f]{8}$/i.test(inValue)) {
         // Parse hex color
