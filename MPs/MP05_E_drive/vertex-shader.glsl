@@ -20,5 +20,4 @@ void main() {
     v_normal = normalize(mat3(mv) * normal);        // surface normal in view space
     //v_LightDir = normalize(mat3(mv) * lightdir - v_Position);    // lightdir in view space
     v_LightDir = normalize(mat3(mv) * lightdir);    // lightdir in view space
-
 }

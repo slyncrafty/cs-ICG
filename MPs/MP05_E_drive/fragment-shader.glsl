@@ -9,13 +9,12 @@ uniform vec3 eyePos;
 uniform vec3 diffuseColor;
 uniform vec3 specularColor;
 uniform vec3 lightcolor;
-//uniform vec3 H;
 
 out vec4 fragColor;
 
 void main() {
     vec3 N = normalize(v_normal);    
-    vec3 L = normalize(v_LightDir);             
+    vec3 L = normalize(v_LightDir);                          
     vec3 V = normalize(eyePos-v_Position); 
     vec3 H = normalize(L + V);
 
@@ -24,11 +23,12 @@ void main() {
     vec3 diffuse = diff * diffuseColor * lightcolor;
 
     // Specular shading
-    float spec = pow(max(dot(N, H), 0.0), 80.0);
-    float shine = 0.8;
+    float spec = pow(max(dot(N, H), 0.0), 100.0);
+    float shine = 2.0;
     vec3 specular = spec * specularColor * lightcolor;
-
-    fragColor = vec4(0.05 + diffuse + specular * shine, 1.0);
+    
+   
+    fragColor = vec4(diffuse + (specular * shine), 1.0);
 }
 
 /*

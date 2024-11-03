@@ -229,18 +229,18 @@ function draw(seconds) {
     // gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(viewMatrix, modelMatrix));
     // gl.uniformMatrix4fv(program.uniforms.p, false, window.p);
     computeCamera();
-    //    const viewMatrix = m4view(eyePos, add([0,0,0], forward), globalUp);
+    //const viewMatrix = m4view(eyePos, add([0,0,0], forward), globalUp);
     const viewMatrix = m4view(eyePos, add(eyePos, forward), globalUp);
     const modelMatrix = IdentityMatrix;
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(viewMatrix, modelMatrix));
     gl.uniformMatrix4fv(program.uniforms.p, false, window.p);
 
     // Set globalUp the light source
-    const lightdir = normalize([1, 1, 1]);
-    const h = normalize(add(lightdir, [0,0,1])); 
+    const lightdir = normalize([1, 2, 1]);
     gl.uniform3fv(program.uniforms.lightdir, lightdir);
+    // const lightdir2 = normalize([-2, 10, -2]);
+    // gl.uniform3fv(program.uniforms.lightdir, lightdir2);
     gl.uniform3fv(program.uniforms.lightcolor, [1, 1, 1]);
-    //gl.uniform3fv(program.uniforms.H, h);
     const diffuseColor = [196/255, 189/255, 139/255];      // Earth tone
     gl.uniform3fv(program.uniforms.diffuseColor, diffuseColor);
     const specularColor = [1.0, 1.0, 1.0];             
@@ -298,18 +298,18 @@ window.addEventListener('load', async (event) => {
     //     console.log("gridsize: " + gridsize + " : faults: " + faults);  // Debugging
     //     generateTerrain(gridsize, faults);
     // }); 
-    window.gridsize = 50;
-    window.faults = 2;
+    window.gridsize = 20;
+    window.faults = 20;
     generateTerrain(gridsize, faults);
 })
 
 
 // Global Variables
-let eyePos = [1, 1, 1];
+let eyePos = [0, 0, 0];
 let forward = [0, 0, -1];
 const globalUp =[0, 1, 0];
-const movingSpeed = 0.01;
-const rotationSpeed = movingSpeed*2;
+const movingSpeed = 0.005;
+const rotationSpeed = movingSpeed*3;
 const cameraHeightOffset = 0.05;
 
 window.geomData = {};
@@ -403,13 +403,25 @@ function computeCamera(){
     // if (keysBeingPressed['e']) {
     //     eyePos = add(eyePos, mul(globalUp, movingSpeed));
     // }
+    // Reset eyePos to (0,0,0)
     if (keysBeingPressed[' ']) {
         resetCameraPos();
     }
+
+    tempEyePos = eyePos;
+    // Clamp the x and z positions to the grid boundaries
+    tempEyePos[0] = Math.max(-1, Math.min(tempEyePos[0], 1));
+    tempEyePos[2] = Math.max(-1, Math.min(tempEyePos[2], 1));
+    eyePos = tempEyePos;
+
+    // 1. Move the camera as if flying freely this frame above
+    // 2. Find the height of the terrain at the camera’s horizontal position
     const currHeight = getHeight(eyePos[0], eyePos[2], gridsize);
+    // 3. Change the camera’s height to be a small amount higher than the terrain
     eyePos[1] = currHeight + cameraHeightOffset;
-    if (eyePos[1] < currHeight + 0.01) {
-        eyePos[1] = currHeight + 0.01;
+    // to prevent the height be below terrain
+    if (eyePos[1] < currHeight + 0.1) {
+        eyePos[1] = currHeight + 0.1;
     }
 }
 
@@ -455,31 +467,27 @@ function rotateAroundAxis(vec, axis, angle) {
     return res.map(row => dot(row, vec));
 }
 
-
 // Inverse Bilinear Interpolation Function
+// returns the current position's terrain height
 function getHeight(x, z, gridsize) {
-    // Assuming terrain grid spans from -1 to 1 in both x and z directions
-    const gridMin = -1;
-    const gridMax = 1;
-    const gridStep = (gridMax - gridMin) / (gridsize - 1);
-  
+    const range_max = 1;
+    const range_min = -1;
+    const gridStep = (range_max - range_min) / (gridsize - 1);
+
     // Convert world coordinates to grid indices
-    const u = (x - gridMin) / (gridMax - gridMin) * (gridsize - 1);
-    const v = (z - gridMin) / (gridMax - gridMin) * (gridsize - 1);
+    const u = (x - range_min) / gridStep;
+    const v = (z - range_min) / gridStep;
   
-    // Clamp u and v to grid boundaries
-    const uClamped = Math.max(0, Math.min(u, gridsize - 1));
-    const vClamped = Math.max(0, Math.min(v, gridsize - 1));
+    const i = Math.floor(u);
+    const j = Math.floor(v);
   
-    const i = Math.floor(uClamped);
-    const j = Math.floor(vClamped);
-  
-    const s = uClamped - i;
-    const t = vClamped - j;
-  
-    // Handle edge cases
-    if (i >= gridsize - 1) { return geomData.attributes[1][(gridsize - 1) * gridsize + (gridsize - 1)][1] + 0.5; }
-    if (j >= gridsize - 1) { return geomData.attributes[1][(gridsize - 1) * gridsize + i][1] + 0.5; }
+    const s = u - i;
+    const t = v - j;
+    
+    // for view
+    if (i >= gridsize - 1 || j >= gridsize - 1) {
+        return geomData.attributes[0][j * gridsize + i][1];
+    }
   
     // Get heights at the four surrounding vertices
     const idx00 = j * gridsize + i;
@@ -501,3 +509,37 @@ function getHeight(x, z, gridsize) {
   
     return height;
   }
+
+
+
+// // Variables for handling view toggle 
+// let currEyePos = [...eyePos];
+// let currForward = [...forward];
+// let viewToggle = false;
+// const viewEyePos = [1, 2, 5];  // Example position
+// const viewForward = [0, -0.5, -1];  // Example orientation
+
+// // Handle view toggle
+// // While 'v' key is pressed, camera will be switching to given eyePos 
+// window.addEventListener('keydown', (event) => {
+//     if (event.key === 'v' && !viewToggle) {
+//         // Save current camera position and orientation
+//         currEyePos = [...eyePos];
+//         currForward = [...forward];
+        
+//         // Move to the far view
+//         eyePos = [...viewEyePos];
+//         forward = normalize(viewForward);
+//         viewToggle = true;
+//     }
+//     keysBeingPressed[event.key] = true;
+// });
+
+// window.addEventListener('keyup', (event) => {
+//     if (event.key === 'v' && viewToggle) {
+//         eyePos = [...currEyePos];
+//         forward = [...currForward];
+//         viewToggle = false;
+//     }
+//     keysBeingPressed[event.key] = false;
+// });

@@ -96,7 +96,7 @@ function fillScreen() {
     if (gl) {
         gl.viewport(0, 0, canvas.width, canvas.height);
         const fieldOfView = Math.PI / 3;
-        const near = 0.1;
+        const near = 0.01; // updated 
         const far = 10.0;
         window.p = m4perspNegZ(near, far, fieldOfView, canvas.width, canvas.height);
     }
