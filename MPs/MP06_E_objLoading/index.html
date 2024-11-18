@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Textures</title>
+    <script src="objLoader.js"></script>
+    <script src="utils.js"></script>
+    <script src="math.js"></script>
+    <script src="wrapWebGL2.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:,">
+    <style>
+        body {
+            margin: 0; border: none; padding: 0;
+            display: flex; flex-direction: column;
+            width: 100%; height: 100vh;
+        }
+        .controls {
+            flex: 0 0 auto;
+        }
+        .controls > * { margin: 1em; }
+        .display {
+            flex-grow: 1;
+            line-height: 0rem;
+        }
+        </style>
+    </head>
+    <body>
+        <form class="controls" action="javascript:void(0);">
+            <label>File Path: <input id="filePath" type="text" value = ""></label>
+            <label>Image Path: <input id="material" type="text" value = ""></label>
+            <input id="submit" type="submit" value="Load OBJ">
+        </form>
+        <div class="display">
+            <canvas width="300" height="300"></canvas>
+        </div>
+    </body>
+</html> 
