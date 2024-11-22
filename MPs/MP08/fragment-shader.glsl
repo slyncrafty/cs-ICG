@@ -29,6 +29,7 @@ void main() {
 
     fragColor = vec4(diffuse + specular * shine, 1.0);
 
+    //fragColor = vec4(diffuse, 1.0);
 }
 
 /*

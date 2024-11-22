@@ -2,12 +2,12 @@
 
 const cube = 1.0;
 const numSpheres = 50;
-const maxSpeed = 2.0;
-const gravity = 1.0;
+const maxSpeed = 3.0;
+const gravity = 0.9;
 const elasticity = 0.9;
 const radius = 0.075;    // 0.15 * cube width / 2
 const timeInterval = 15000;     // 15 sec
-const EPS = 1e-5;
+const EPS = 1e-4;
 
 let lastTime = 0;
 let timeSinceLastReset = 0;
@@ -17,7 +17,7 @@ let eyePos = [2, 2, 2];
 const globalUp = [0, 1, 0];
 
 
-
+// return random from range (min,max)
 const getRandomRange = (min, max) => Math.random() * (max - min) + min;
 
 class Sphere {
@@ -28,7 +28,7 @@ class Sphere {
     }
 }
 
-const fVal = 0.9
+const fVal = 0.2 //starting velocity range
 function generateSpheres(){
     spheres = [];
     let bound = cube / 2 - radius;
@@ -56,6 +56,11 @@ function generateSpheres(){
 }
 
 const f = 0.9; 
+/**
+ * Updates momentum val over time -- changing velocity of each sphere
+ * Handles wall-sphere collision and sphere-sphere collisions.
+ * @param {*} deltaT 
+ */
 function updatePhysics(deltaT) {
     spheres.forEach((sphere, i) => {
         if (isNaN(deltaT) || deltaT <= 0) {
@@ -64,7 +69,7 @@ function updatePhysics(deltaT) {
         }
 
         // Gravity
-        const G = -gravity * deltaT;// * 0.01;
+        const G = -gravity * deltaT;
         sphere.velocity = add(sphere.velocity, [0, G, 0]);
 
         //speed limit cap
@@ -75,6 +80,7 @@ function updatePhysics(deltaT) {
 
         // Euler's Method to update positions
         sphere.position = add(sphere.position, mul(sphere.velocity, deltaT));
+        //sphere.velocity = add(sphere.velocity, mul(G, deltaT));
 
         const bound = cube/2;
         // wall collisions
@@ -82,12 +88,6 @@ function updatePhysics(deltaT) {
             if (sphere.position[j] - radius < -bound) {
                 sphere.position[j] = -bound + radius;
                 sphere.velocity[j] = -elasticity * sphere.velocity[j];
-                if (j === 1) // y
-                {
-                    sphere.velocity[0] *= f; 
-                    sphere.velocity[1] *= f; 
-                    sphere.velocity[2] *= f; 
-                }
             } 
             else if (sphere.position[j] + radius > bound) 
             {
@@ -95,83 +95,93 @@ function updatePhysics(deltaT) {
                 sphere.velocity[j] = -elasticity * sphere.velocity[j];
             } 
         }
-        // sphere collisions
-        // for (let k = i + 1; k < spheres.length; k++) 
-        // {
-        //     const other = spheres[k];
-        //     const relativePos = sub(other.position, sphere.position);
-        //     const distSq = dot(relativePos, relativePos);
-        //     const minDist = 2 * radius;
 
-        //     if (distSq < minDist * minDist) {
-        //         const dist = Math.sqrt(distSq);
-        //         if (dist === 0) continue; 
+        // // sphere collisions
+        // for (let i = 0; i < spheres.length; i++) {
+        //     for (let j = i + 1; j < spheres.length; j++) { 
+        //         // Ensure momentum is resolved once
+        //         const sphereOne = spheres[i];
+        //         const sphereTwo = spheres[j];
+        //         const relativePos = sub(sphereTwo.position, sphereOne.position);
+        //         const dist2 = dot(relativePos, relativePos);
+        //         const minDist = 2 * radius; 
+    
+        //         if (dist2 < minDist * minDist) {
+        //             const dist = Math.sqrt(dist2);
+        //             if (dist === 0) continue;
 
-        //         const d = div(relativePos, dist);
-        //         const s_i = dot(sphere.velocity, d);
-        //         const s_j = dot(other.velocity, d);
-        //         const s = s_i - s_j; // Net collision speed
+        //             const d = div(relativePos, dist);
 
-        //         if (s > 0) continue;
-
-        //         const impulse = -(1 + elasticity) * s / 2;  // -
-        //         const impulseVec = mul(d, impulse);
-
-        //         sphere.velocity = add(sphere.velocity, impulseVec);
-        //         other.velocity = sub(other.velocity, impulseVec); 
-
-        //         // Correct positions to resolve overlap
-        //         const overlap = minDist - dist;
-        //         if (overlap > EPS) {
+        //             const overlap = minDist - dist;
         //             const correction = mul(d, overlap / 2);
-        //             sphere.position = sub(sphere.position, correction);
-        //             other.position = add(other.position, correction);
+        //             sphereOne.position = sub(sphereOne.position, correction);
+        //             sphereTwo.position = add(sphereTwo.position, correction); 
+                    
+        //             // velocity parallel to the dir of collision
+        //             const s_1 = dot(sphereOne.velocity, d);
+        //             const s_2 = dot(sphereTwo.velocity, d);
+        //             const S = s_1 - s_2;
+                    
+        //             // detecting overlap
+        //             if (S > 0) continue;
+    
+        //             const impulse = -(1 + elasticity) * S / 2;  // same w
+        //             const impulseVec = mul(d, impulse);
+    
+        //             // Update velocities
+        //             sphereOne.velocity = add(sphereOne.velocity, impulseVec);
+        //             sphereTwo.velocity = sub(sphereTwo.velocity, impulseVec);
         //         }
         //     }
         // }
-        for (let i = 0; i < spheres.length; i++) {
-            for (let j = i + 1; j < spheres.length; j++) { 
-                // Ensure momentum is resolved once
-                const sphereA = spheres[i];
-                const sphereB = spheres[j];
-                const relativePos = sub(sphereB.position, sphereA.position);
-                const distSq = dot(relativePos, relativePos);
-                const minDist = 2 * radius; 
-    
-                if (distSq < minDist * minDist) {
-                    const dist = Math.sqrt(distSq);
-                    if (dist === 0) continue;
-    
-                    const d = div(relativePos, dist); 
-                    const s_a = dot(sphereA.velocity, d);
-                    const s_b = dot(sphereB.velocity, d);
-                    const relativeSpeed = s_a - s_b;
-    
-                    if (relativeSpeed > 0) continue;
-    
-                    const impulse = -(1 + elasticity) * relativeSpeed / 2; 
-                    const impulseVec = mul(d, impulse);
-    
-                    // Update velocities
-                    sphereA.velocity = add(sphereA.velocity, impulseVec);
-                    sphereB.velocity = sub(sphereB.velocity, impulseVec);
-    
-                    // Correct positions to resolve overlap
-                    const overlap = minDist - dist;
-                    if (overlap > 1e-5) {
-                        const correction = mul(d, overlap / 2);
-                        sphereA.position = sub(sphereA.position, correction);
-                        sphereB.position = add(sphereB.position, correction);
-                    }
+
+        // Sphere collisions
+        for (let k = i + 1; k < spheres.length; k++) 
+        {
+            const other = spheres[k];
+            const relativePos = sub(sphere.position, other.position);
+            const dist2 = dot(relativePos, relativePos);
+            const minDist = 2 * radius;
+        
+            if (dist2 < minDist * minDist) {
+                const dist = Math.sqrt(dist2);
+                if (dist === 0) continue; 
+        
+                // Collision Normal Direction
+                const d = div(relativePos, dist);
+        
+                // Relative speed
+                const s_i = dot(sphere.velocity, d);
+                const s_j = dot(other.velocity, d);
+                const s = s_i - s_j; // Net collision speed
+        
+                // Resolving if Moving Towards each Other
+                if (s >= 0) continue;
+        
+                // Compute Velocity Changes
+                const delta_v_i = mul(d, -0.5 * (1 + elasticity) * s);
+                const delta_v_j = mul(d, 0.5 * (1 + elasticity) * s);
+        
+                // Update Velocities
+                sphere.velocity = add(sphere.velocity, delta_v_i);
+                other.velocity = add(other.velocity, delta_v_j);
+        
+                // Correct Positions to Resolve Overlap
+                const overlap = minDist - dist;
+                if (overlap > EPS) {
+                    const correction = mul(d, overlap / 2);
+                    sphere.position = add(sphere.position, correction);
+                    other.position = sub(other.position, correction);
                 }
             }
         }
-
+    
         //console.log("Updating physics...");
     });
 }
 
 
+// sphere.json values used to create sphere geometry
 function generateSphereGeometry(radius) {
     // Sphere data from the JSON
     const sphereJSON = {
@@ -353,9 +363,9 @@ function generateSphereGeometry(radius) {
     const positions = rawPositions.map((p) => mul(p, radius));
     const normals = rawPositions.map(normalize);
     const indices = sphereJSON.triangles.flat();
-    console.log("Generate sphere geometry ...");
-    console.log("attributes-positions: ", sphereJSON.attributes[0].length);
-    console.log("attributes-normals: ", sphereJSON.attributes[1].length);
+    console.log("Generate sphere geometry ...");        // Debugging
+    console.log("attributes-positions: ", sphereJSON.attributes[0].length);     // Debugging
+    console.log("attributes-normals: ", sphereJSON.attributes[1].length);       // Debugging
     return {
         attributes: [positions, normals],
         triangles: indices
@@ -398,9 +408,10 @@ function render() {
     gl.useProgram(program);
 
     // lighting 
-    const lightdir = normalize([3, 3, 10]);
+    const lightdir = normalize([3, 3, 3]);
     gl.uniform3fv(program.uniforms.lightdir, lightdir);
     gl.uniform3fv(program.uniforms.lightcolor, [1.0, 1.0, 1.0]);
+    gl.uniform3fv(program.uniforms.specularColor, [1.0, 1.0, 1.0]);
 
     spheres.forEach((sphere) => {
         // model matrix
@@ -471,12 +482,9 @@ window.addEventListener('load', async (event) => {
 
 
 function tick(currentTime) {
-    if (lastTime == 0) {
-        lastTime = 0.001;
-    }
     const deltaTime = (currentTime - lastTime) / 1000;
     lastTime = currentTime;
-
+    //console.log(currentTime);
     if (isNaN(deltaTime) || deltaTime <= 0) {
         console.error("Invalid deltaTime tick:", deltaTime);
         requestAnimationFrame(tick); // Continue the loop even if deltaTime is invalid
