@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Many Sphere</title>
+    <script src="wrapWebGL2.js"></script>
+    <script src="math.js"></script>
+    <script src="utils.js"></script>
+    <script src="app.js"></script>
+
+    <link rel="icon" href="data:,">
+</head>
+<body>
+    <div class="display">
+        <canvas width="300" height="300"></canvas>
+    </div>
+    <div id="fps" style="position:fixed; bottom:1ex; right:1ex; display:table;"></div>
+    <form class="controls" action="javascript:void(0);" style="position:fixed; top:1ex; left:1ex; display:table;">
+        <label>Spheres: <input id="spheres" type="number" value="50" style="width:5em;"/></label>
+        <input id="submit" type="submit" value="Restart simulation"/>
+    </form>
+</body>
+</html>
