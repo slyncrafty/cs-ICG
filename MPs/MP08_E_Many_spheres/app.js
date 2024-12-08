@@ -13,7 +13,7 @@ let lastTime = 0;
 let timeSinceLastReset = 0;
 let spheres = [];
 
-let eyePos = [2, 2, 2];
+let eyePos = [2, 5, 2];
 const globalUp = [0, 1, 0];
 const identityMatrix = [
     1, 0, 0, 0,
@@ -29,7 +29,7 @@ let gridSizeMax, gridSizeMin, grid;
 let spherePts, sphereCols, sphereRads;
 
 // FPS 
-let fps = document.querySelector('#fps');
+let fpsF = -1;
 let lastFrameT = performance.now();
 
 
@@ -41,8 +41,8 @@ class Sphere {
         this.position = position;
         this.velocity = velocity;
         this.color = color;
-        this.index = index;
         this.radius = radius;
+        this.index = index;
         this.mass = (4/3) * Math.PI * Math.pow(radius, 3); // mass based on volume related to radius
     }
 }
@@ -53,7 +53,9 @@ function generateSpheres(){
     let bound = cube / 2;
     for (let i = 0; i < numSpheres; i++)
     {
-        const radius = (Math.random() + 0.25) * (0.75 / Math.pow(numSpheres, 1 / 3));
+        const radius = (Math.random() + 0.25) * (0.75 / Math.pow(numSpheres,(1/3)));
+        if (radius > maxRadius) maxRadius = radius; 
+
         const position = [
             getRandomRange(-bound + radius, bound - radius),
             getRandomRange(-bound + radius, bound - radius),
@@ -66,14 +68,17 @@ function generateSpheres(){
         ];
         
         const color = [Math.random(), Math.random(), Math.random()];
+   
         spheres.push(new Sphere(position, velocity, color, radius, i));
-        //console.log("sphere generated... ", i, " ", color);       // Debugging
-        //console.log(spheres.length);      // Debugging
+        console.log("sphere generated... ", i, " ", color);       // Debugging
+        console.log(spheres.length);      // Debugging
     }
     // Set up grid parameters
     cellSize = 2 * maxRadius;
-    gridMin = [-cube / 2, -cube / 2, -cube / 2];
-    gridMax = [cube / 2, cube / 2, cube / 2];
+    const half = cube/2;
+    gridMin = [-half, -half, -half];
+    gridMax = [half, half, half];
+    console.log(`Grid: cellSize=${cellSize}, gridMin=${gridMin}, gridMax=${gridMax}`);
 }
 
 const neighborOffsets = [];
@@ -281,236 +286,237 @@ function handleSphereCollision(sphere, other) {
     const relativePos = sub(sphere.position, other.position);
     const dist2 = dot(relativePos, relativePos);
     const minDist = sphere.radius + other.radius;
+    const dist = Math.sqrt(dist2);
+    if (dist === 0) return;
 
-    if (dist2 < minDist * minDist) {
-        const dist = Math.sqrt(dist2);
-        if (dist === 0) return;
+    // Collision Normal Direction
+    const d = div(relativePos, dist);
 
-        // Collision Normal Direction
-        const d = div(relativePos, dist);
+    // Relative speed along normal
+    //const s_i = dot(sphere.velocity, d);
+    //const s_j = dot(other.velocity, d);
+    //const s = s_i - s_j; // Net collision speed
+    const s_i = sub(sphere.velocity, other.velocity);
+    const s = dot(relativePos, d); // v along normal
 
-        // Relative speed along normal
-        const s_i = dot(sphere.velocity, d);
-        const s_j = dot(other.velocity, d);
-        const s = s_i - s_j; // Net collision speed
+    // Resolving if Moving Towards each Other
+    if (s > 0) return;
 
-        // Resolving if Moving Towards each Other
-        if (s >= 0) return;
+    const m1 = sphere.mass;
+    const m2 = other.mass;
 
-        const m1 = sphere.mass;
-        const m2 = other.mass;
+    // Compute impulse scalar
+    const impulse = - (1 + elasticity) * s / (1 / m1 + 1 / m2);
 
-        // Compute impulse scalar
-        const j = - (1 + elasticity) * s / (1 / m1 + 1 / m2);
+    // Compute Velocity Changes
+    // const delta_v_i = mul(d, j / m1);
+    // const delta_v_j = mul(d, -j / m2);
+    const impulseVec = mul(s, impulse);
 
-        // Compute Velocity Changes
-        const delta_v_i = mul(d, j / m1);
-        const delta_v_j = mul(d, -j / m2);
+    // Update Velocities
+    sphere.velocity = add(sphere.velocity, div(impulseVec, m1));
+    other.velocity = add(other.velocity, div(impulseVec, m2));
 
-        // Update Velocities
-        sphere.velocity = add(sphere.velocity, delta_v_i);
-        other.velocity = add(other.velocity, delta_v_j);
-
-        // Correct Positions to Resolve Overlap
-        const overlap = minDist - dist;
-        if (overlap > EPS) {
-            const totalMass = m1 + m2;
-            sphere.position = add(sphere.position, mul(d, overlap * (m2 / totalMass)));
-            other.position = sub(other.position, mul(d, overlap * (m1 / totalMass)));
-        }
+    // Correct Positions to Resolve Overlap
+    const overlap = minDist - dist;
+    if (overlap > EPS) {
+        const totalMass = m1 + m2;
+        sphere.position = add(sphere.position, mul(d, overlap * (m2 / totalMass)));
+        other.position = sub(other.position, mul(d, overlap * (m1 / totalMass)));
     }
+
 }
 
-// sphere.json values used to create sphere geometry
-function generateSphereGeometry(radius) {
-    // Sphere data from the JSON
-    const sphereJSON = {
-        "attributes":
-        [
-          [[0.850651,0.525731,0]
-          ,[0,-0.850651,0.525731]
-          ,[0,0.850651,-0.525731]
-          ,[0,-0.850651,-0.525731]
-          ,[0,-1,0]
-          ,[1,0,0]
-          ,[-1,0,0]
-          ,[0.809017,0.309017,0.5]
-          ,[0.809017,0.309017,-0.5]
-          ,[-0.809017,0.309017,0.5]
-          ,[-0.809017,0.309017,-0.5]
-          ,[-0.850651,0.525731,0]
-          ,[0.5,0.809017,0.309017]
-          ,[0.5,-0.809017,0.309017]
-          ,[0.5,0.809017,-0.309017]
-          ,[0.5,-0.809017,-0.309017]
-          ,[0.809017,-0.309017,0.5]
-          ,[0.809017,-0.309017,-0.5]
-          ,[-0.5,0.809017,0.309017]
-          ,[-0.809017,-0.309017,0.5]
-          ,[-0.5,0.809017,-0.309017]
-          ,[-0.809017,-0.309017,-0.5]
-          ,[0.850651,-0.525731,0]
-          ,[0,0,1]
-          ,[-0.5,-0.809017,0.309017]
-          ,[0.309017,0.5,0.809017]
-          ,[0,0,-1]
-          ,[0.309017,-0.5,0.809017]
-          ,[-0.5,-0.809017,-0.309017]
-          ,[-0.309017,0.5,0.809017]
-          ,[0.309017,0.5,-0.809017]
-          ,[-0.309017,-0.5,0.809017]
-          ,[0.309017,-0.5,-0.809017]
-          ,[-0.850651,-0.525731,0]
-          ,[-0.309017,0.5,-0.809017]
-          ,[-0.309017,-0.5,-0.809017]
-          ,[0,1,0]
-          ,[0.525731,0,0.850651]
-          ,[0.525731,0,-0.850651]
-          ,[-0.525731,0,0.850651]
-          ,[-0.525731,0,-0.850651]
-          ,[0,0.850651,0.525731]
-          ]
-        ,
-          [[0.8507,0.5257,0]
-          ,[0,-0.8507,0.5257]
-          ,[0,0.8507,-0.5257]
-          ,[0,-0.8507,-0.5257]
-          ,[0,-1,0]
-          ,[1,0,0]
-          ,[-1,0,0]
-          ,[0.809,0.309,0.5]
-          ,[0.809,0.309,-0.5]
-          ,[-0.809,0.309,0.5]
-          ,[-0.809,0.309,-0.5]
-          ,[-0.8507,0.5257,0]
-          ,[0.5,0.809,0.309]
-          ,[0.5,-0.809,0.309]
-          ,[0.5,0.809,-0.309]
-          ,[0.5,-0.809,-0.309]
-          ,[0.809,-0.309,0.5]
-          ,[0.809,-0.309,-0.5]
-          ,[-0.5,0.809,0.309]
-          ,[-0.809,-0.309,0.5]
-          ,[-0.5,0.809,-0.309]
-          ,[-0.809,-0.309,-0.5]
-          ,[0.8507,-0.5257,0]
-          ,[0,0,1]
-          ,[-0.5,-0.809,0.309]
-          ,[0.309,0.5,0.809]
-          ,[0,0,-1]
-          ,[0.309,-0.5,0.809]
-          ,[-0.5,-0.809,-0.309]
-          ,[-0.309,0.5,0.809]
-          ,[0.309,0.5,-0.809]
-          ,[-0.309,-0.5,0.809]
-          ,[0.309,-0.5,-0.809]
-          ,[-0.8507,-0.5257,0]
-          ,[-0.309,0.5,-0.809]
-          ,[-0.309,-0.5,-0.809]
-          ,[0,1,0]
-          ,[0.5257,0,0.8507]
-          ,[0.5257,0,-0.8507]
-          ,[-0.5257,0,0.8507]
-          ,[-0.5257,0,-0.8507]
-          ,[0,0.8507,0.5257]
-          ]
-        ]
-      ,"triangles":
-        [[0,5,8]
-        ,[0,7,5]
-        ,[0,8,14]
-        ,[0,12,7]
-        ,[0,14,12]
-        ,[1,4,13]
-        ,[1,13,27]
-        ,[1,24,4]
-        ,[1,27,31]
-        ,[1,31,24]
-        ,[2,14,30]
-        ,[2,20,36]
-        ,[2,30,34]
-        ,[2,34,20]
-        ,[2,36,14]
-        ,[3,4,28]
-        ,[3,15,4]
-        ,[3,28,35]
-        ,[3,32,15]
-        ,[3,35,32]
-        ,[4,15,13]
-        ,[4,24,28]
-        ,[5,7,16]
-        ,[5,16,22]
-        ,[5,17,8]
-        ,[5,22,17]
-        ,[6,9,11]
-        ,[6,10,21]
-        ,[6,11,10]
-        ,[6,19,9]
-        ,[6,21,33]
-        ,[6,33,19]
-        ,[7,12,25]
-        ,[7,25,37]
-        ,[7,37,16]
-        ,[8,17,38]
-        ,[8,30,14]
-        ,[8,38,30]
-        ,[9,18,11]
-        ,[9,19,39]
-        ,[9,29,18]
-        ,[9,39,29]
-        ,[10,11,20]
-        ,[10,20,34]
-        ,[10,34,40]
-        ,[10,40,21]
-        ,[11,18,20]
-        ,[12,14,36]
-        ,[12,36,41]
-        ,[12,41,25]
-        ,[13,15,22]
-        ,[13,16,27]
-        ,[13,22,16]
-        ,[15,17,22]
-        ,[15,32,17]
-        ,[16,37,27]
-        ,[17,32,38]
-        ,[18,29,41]
-        ,[18,36,20]
-        ,[18,41,36]
-        ,[19,24,31]
-        ,[19,31,39]
-        ,[19,33,24]
-        ,[21,28,33]
-        ,[21,35,28]
-        ,[21,40,35]
-        ,[23,25,29]
-        ,[23,27,37]
-        ,[23,29,39]
-        ,[23,31,27]
-        ,[23,37,25]
-        ,[23,39,31]
-        ,[24,33,28]
-        ,[25,41,29]
-        ,[26,30,38]
-        ,[26,32,35]
-        ,[26,34,30]
-        ,[26,35,40]
-        ,[26,38,32]
-        ,[26,40,34]
-        ]
-      }
+// // sphere.json values used to create sphere geometry
+// function generateSphereGeometry(radius) {
+//     // Sphere data from the JSON
+//     const sphereJSON = {
+//         "attributes":
+//         [
+//           [[0.850651,0.525731,0]
+//           ,[0,-0.850651,0.525731]
+//           ,[0,0.850651,-0.525731]
+//           ,[0,-0.850651,-0.525731]
+//           ,[0,-1,0]
+//           ,[1,0,0]
+//           ,[-1,0,0]
+//           ,[0.809017,0.309017,0.5]
+//           ,[0.809017,0.309017,-0.5]
+//           ,[-0.809017,0.309017,0.5]
+//           ,[-0.809017,0.309017,-0.5]
+//           ,[-0.850651,0.525731,0]
+//           ,[0.5,0.809017,0.309017]
+//           ,[0.5,-0.809017,0.309017]
+//           ,[0.5,0.809017,-0.309017]
+//           ,[0.5,-0.809017,-0.309017]
+//           ,[0.809017,-0.309017,0.5]
+//           ,[0.809017,-0.309017,-0.5]
+//           ,[-0.5,0.809017,0.309017]
+//           ,[-0.809017,-0.309017,0.5]
+//           ,[-0.5,0.809017,-0.309017]
+//           ,[-0.809017,-0.309017,-0.5]
+//           ,[0.850651,-0.525731,0]
+//           ,[0,0,1]
+//           ,[-0.5,-0.809017,0.309017]
+//           ,[0.309017,0.5,0.809017]
+//           ,[0,0,-1]
+//           ,[0.309017,-0.5,0.809017]
+//           ,[-0.5,-0.809017,-0.309017]
+//           ,[-0.309017,0.5,0.809017]
+//           ,[0.309017,0.5,-0.809017]
+//           ,[-0.309017,-0.5,0.809017]
+//           ,[0.309017,-0.5,-0.809017]
+//           ,[-0.850651,-0.525731,0]
+//           ,[-0.309017,0.5,-0.809017]
+//           ,[-0.309017,-0.5,-0.809017]
+//           ,[0,1,0]
+//           ,[0.525731,0,0.850651]
+//           ,[0.525731,0,-0.850651]
+//           ,[-0.525731,0,0.850651]
+//           ,[-0.525731,0,-0.850651]
+//           ,[0,0.850651,0.525731]
+//           ]
+//         ,
+//           [[0.8507,0.5257,0]
+//           ,[0,-0.8507,0.5257]
+//           ,[0,0.8507,-0.5257]
+//           ,[0,-0.8507,-0.5257]
+//           ,[0,-1,0]
+//           ,[1,0,0]
+//           ,[-1,0,0]
+//           ,[0.809,0.309,0.5]
+//           ,[0.809,0.309,-0.5]
+//           ,[-0.809,0.309,0.5]
+//           ,[-0.809,0.309,-0.5]
+//           ,[-0.8507,0.5257,0]
+//           ,[0.5,0.809,0.309]
+//           ,[0.5,-0.809,0.309]
+//           ,[0.5,0.809,-0.309]
+//           ,[0.5,-0.809,-0.309]
+//           ,[0.809,-0.309,0.5]
+//           ,[0.809,-0.309,-0.5]
+//           ,[-0.5,0.809,0.309]
+//           ,[-0.809,-0.309,0.5]
+//           ,[-0.5,0.809,-0.309]
+//           ,[-0.809,-0.309,-0.5]
+//           ,[0.8507,-0.5257,0]
+//           ,[0,0,1]
+//           ,[-0.5,-0.809,0.309]
+//           ,[0.309,0.5,0.809]
+//           ,[0,0,-1]
+//           ,[0.309,-0.5,0.809]
+//           ,[-0.5,-0.809,-0.309]
+//           ,[-0.309,0.5,0.809]
+//           ,[0.309,0.5,-0.809]
+//           ,[-0.309,-0.5,0.809]
+//           ,[0.309,-0.5,-0.809]
+//           ,[-0.8507,-0.5257,0]
+//           ,[-0.309,0.5,-0.809]
+//           ,[-0.309,-0.5,-0.809]
+//           ,[0,1,0]
+//           ,[0.5257,0,0.8507]
+//           ,[0.5257,0,-0.8507]
+//           ,[-0.5257,0,0.8507]
+//           ,[-0.5257,0,-0.8507]
+//           ,[0,0.8507,0.5257]
+//           ]
+//         ]
+//       ,"triangles":
+//         [[0,5,8]
+//         ,[0,7,5]
+//         ,[0,8,14]
+//         ,[0,12,7]
+//         ,[0,14,12]
+//         ,[1,4,13]
+//         ,[1,13,27]
+//         ,[1,24,4]
+//         ,[1,27,31]
+//         ,[1,31,24]
+//         ,[2,14,30]
+//         ,[2,20,36]
+//         ,[2,30,34]
+//         ,[2,34,20]
+//         ,[2,36,14]
+//         ,[3,4,28]
+//         ,[3,15,4]
+//         ,[3,28,35]
+//         ,[3,32,15]
+//         ,[3,35,32]
+//         ,[4,15,13]
+//         ,[4,24,28]
+//         ,[5,7,16]
+//         ,[5,16,22]
+//         ,[5,17,8]
+//         ,[5,22,17]
+//         ,[6,9,11]
+//         ,[6,10,21]
+//         ,[6,11,10]
+//         ,[6,19,9]
+//         ,[6,21,33]
+//         ,[6,33,19]
+//         ,[7,12,25]
+//         ,[7,25,37]
+//         ,[7,37,16]
+//         ,[8,17,38]
+//         ,[8,30,14]
+//         ,[8,38,30]
+//         ,[9,18,11]
+//         ,[9,19,39]
+//         ,[9,29,18]
+//         ,[9,39,29]
+//         ,[10,11,20]
+//         ,[10,20,34]
+//         ,[10,34,40]
+//         ,[10,40,21]
+//         ,[11,18,20]
+//         ,[12,14,36]
+//         ,[12,36,41]
+//         ,[12,41,25]
+//         ,[13,15,22]
+//         ,[13,16,27]
+//         ,[13,22,16]
+//         ,[15,17,22]
+//         ,[15,32,17]
+//         ,[16,37,27]
+//         ,[17,32,38]
+//         ,[18,29,41]
+//         ,[18,36,20]
+//         ,[18,41,36]
+//         ,[19,24,31]
+//         ,[19,31,39]
+//         ,[19,33,24]
+//         ,[21,28,33]
+//         ,[21,35,28]
+//         ,[21,40,35]
+//         ,[23,25,29]
+//         ,[23,27,37]
+//         ,[23,29,39]
+//         ,[23,31,27]
+//         ,[23,37,25]
+//         ,[23,39,31]
+//         ,[24,33,28]
+//         ,[25,41,29]
+//         ,[26,30,38]
+//         ,[26,32,35]
+//         ,[26,34,30]
+//         ,[26,35,40]
+//         ,[26,38,32]
+//         ,[26,40,34]
+//         ]
+//       }
       
-    const rawPositions = sphereJSON.attributes[0];
-    const positions = rawPositions.map((p) => mul(p, radius));
-    const normals = rawPositions.map(normalize);
-    const indices = sphereJSON.triangles.flat();
-    console.log("Generate sphere geometry ...");        // Debugging
-    console.log("attributes-positions: ", sphereJSON.attributes[0].length);     // Debugging
-    console.log("attributes-normals: ", sphereJSON.attributes[1].length);       // Debugging
-    return {
-        attributes: [positions, normals],
-        triangles: indices
-    };
-}
+//     const rawPositions = sphereJSON.attributes[0];
+//     const positions = rawPositions.map((p) => mul(p, radius));
+//     const normals = rawPositions.map(normalize);
+//     const indices = sphereJSON.triangles.flat();
+//     console.log("Generate sphere geometry ...");        // Debugging
+//     console.log("attributes-positions: ", sphereJSON.attributes[0].length);     // Debugging
+//     console.log("attributes-normals: ", sphereJSON.attributes[1].length);       // Debugging
+//     return {
+//         attributes: [positions, normals],
+//         triangles: indices
+//     };
+// }
 
 
 function setupGeometry() {
@@ -537,30 +543,28 @@ function setupGeometry() {
     //     vao: vao,
     // };
 
-    // Position buffer
+    // 0 : Position buffer
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     // Allocate buffer with enough size (will update per frame)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(numSpheres * 3 * 4), gl.DYNAMIC_DRAW);
-    // const positionLoc = gl.getAttribLocation(program, 'aPosition');
-    // gl.enableVertexAttribArray(positionLoc);
-    // gl.vertexAttribPointer(positionLoc, 3, gl.FLOAT, false, 0, 0);
-
-    // Radius buffer
-    const radiusBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, radiusBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, numSpheres * 4, gl.DYNAMIC_DRAW);
-    // const radiusLoc = gl.getAttribLocation(program, 'aRadius');
-    // gl.enableVertexAttribArray(radiusLoc);
-    // gl.vertexAttribPointer(radiusLoc, 1, gl.FLOAT, false, 0, 0);
-
-    // Color buffer
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0); // location = 0
+    gl.enableVertexAttribArray(0);
+    
+    // 1: Color buffer
     const colorBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, numSpheres * 3 * 4, gl.DYNAMIC_DRAW);
-    // const colorLoc = gl.getAttribLocation(program, 'aColor');
-    // gl.enableVertexAttribArray(colorLoc);
-    // gl.vertexAttribPointer(colorLoc, 3, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0); // location = 2
+    gl.enableVertexAttribArray(1);
+
+    // 2: Radius buffer
+    const radiusBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, radiusBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, numSpheres * 4, gl.DYNAMIC_DRAW);
+    gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 0, 0); // location = 1
+    gl.enableVertexAttribArray(2);
+
 
     return {
         vao: vao,
@@ -637,10 +641,13 @@ function render(){
 
     gl.bindBuffer(gl.ARRAY_BUFFER, sphereGeometry.colorBuffer);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, sphereCols);
-    
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereGeometry.radiusBuffer);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, sphereRads);
+
     // Set uniforms
     gl.uniformMatrix4fv(program.uniforms.mv, false, mv);
-    gl.uniformMatrix4fv(program.uniforms.p, false, p);
+    gl.uniformMatrix4fv(program.uniforms.p, false, window.p);
 
     const uViewportSize = gl.canvas.height;
     gl.uniform1f(program.uniforms.uViewportSize, uViewportSize);
@@ -657,6 +664,13 @@ function render(){
 
     
     gl.drawArrays(gl.POINTS, 0, spheres.length);
+
+    // Update FPS Display
+    const currentTime = performance.now();
+    const deltaTime = (currentTime - lastFrameT) / 1000;
+    lastFrameT = currentTime;
+    const _fps = 1 / deltaTime;
+    fpsF.innerHTML = _fps.toFixed(1);
 }
 
 
@@ -667,6 +681,13 @@ function render(){
  * which makes functions that call `fetch` or other async functions cleaner.
  */
 window.addEventListener('load', async (event) => {
+    const fpsF = document.querySelector('#fps');
+    if (!fpsF) {
+        console.error("FPS display element not found.");
+        return;
+    }
+    console.log("FPS display element initialized:", fpsF);
+
     window.canvas = document.querySelector('canvas');
     window.gl = initWebGL2(canvas);
     if (!gl) return;
@@ -689,6 +710,7 @@ window.addEventListener('load', async (event) => {
         numSpheres = parseInt(document.querySelector('#spheres').value);
         console.log("Sphere Number changed..", numSpheres);
         generateSpheres();
+        window.sphereGeometry = setupGeometry(); // Re-setup geometry
         timeSinceLastReset = 0;
     });
 
@@ -712,11 +734,13 @@ window.addEventListener('load', async (event) => {
 
 
 function tick(currentTime) {
+    if(!lastTime){ lastTime = currentTime; }
     const deltaTime = (currentTime - lastTime) / 1000;
     lastTime = currentTime;
     //console.log(currentTime);
+
     if (isNaN(deltaTime) || deltaTime <= 0) {
-        console.error("Invalid deltaTime tick:", deltaTime);
+        console.error("Invalid deltaTime: ", deltaTime);
         requestAnimationFrame(tick); // Continue the loop even if deltaTime is invalid
         return;
     }
@@ -727,6 +751,11 @@ function tick(currentTime) {
     if (timeSinceLastReset >= timeInterval / 1000) {
         generateSpheres();      // spheres reset
         timeSinceLastReset = 0; // time reset
+    }
+
+    if (fpsF) {
+        const fps = 1 / deltaTime;
+        fpsF.innerHTML = `FPS: ${fps.toFixed(1)}`;
     }
 
     updatePhysics(deltaTime);

@@ -11,17 +11,17 @@ uniform vec3 lightdir;           // Light position in world coord
 uniform float uViewportSize;
 uniform float uProjScale;
 
-out vec3 v_normal;
+//out vec3 v_normal;
 out vec3 v_LightDir;
-out vec3 v_Position;
+//out vec3 v_Position;
+out vec3 v_Color;
 
 void main() {
     vec4 pos = vec4(position, 1.0);
-    v_Position = (mv * pos).xyz;
+    //v_Position = (mv * pos).xyz;
     gl_Position = p * mv * pos;
-    float pointSize = uViewportSize * uProjScale * (1.0 / gl_Position.w) * radius;
-    gl_PointSize = pointSize;
-
-    //v_LightDir = normalize(mat3(mv) * lightdir);    // lightdir in view space
+    gl_PointSize = uViewportSize * uProjScale * (1.0 / gl_Position.w) * radius;
+    v_Color = color;
+    v_LightDir = normalize(lightdir);    // lightdir in view space
 
 }
